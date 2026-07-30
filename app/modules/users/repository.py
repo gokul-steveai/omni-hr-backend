@@ -1,11 +1,13 @@
 import uuid
 from typing import Optional, Sequence
-from sqlalchemy import select, func, or_
+
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.models.user import EmployeeProfile, RefreshToken, User, UserRole
 from app.repositories.base import BaseRepository
-from app.models.user import User, EmployeeProfile, RefreshToken, UserRole
+
 
 class UserRepository(BaseRepository[User]):
     def __init__(self, database_session: AsyncSession):
@@ -66,7 +68,7 @@ class UserRepository(BaseRepository[User]):
         query_result = await self.database_session.execute(
             select(RefreshToken).where(
                 RefreshToken.token_hash == token_hash,
-                RefreshToken.is_revoked == False
+                RefreshToken.is_revoked.is_(False)
             )
         )
         return query_result.scalar_one_or_none()

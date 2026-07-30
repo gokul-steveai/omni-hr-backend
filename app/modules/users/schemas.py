@@ -1,8 +1,11 @@
 import uuid
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, EmailStr, ConfigDict
+
+from pydantic import BaseModel, ConfigDict, EmailStr
+
 from app.models.user import UserRole
+
 
 class DepartmentBase(BaseModel):
     id: uuid.UUID

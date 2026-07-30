@@ -1,5 +1,6 @@
 import bcrypt
 
+
 class PasswordService:
     """Decoupled Password Hashing and Verification Service."""
 

@@ -1,13 +1,15 @@
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
+
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.services.password_service import PasswordService
 from app.core.services.token_service import TokenService
-from app.models.user import User, EmployeeProfile, RefreshToken
-from app.modules.auth.schemas import LoginRequest, RegisterRequest, TokenResponse
 from app.db.unit_of_work import UnitOfWork
+from app.models.user import RefreshToken, User
+from app.modules.auth.schemas import LoginRequest, TokenResponse
+
 
 class AuthService:
     def __init__(self, database_session: AsyncSession):
@@ -31,31 +33,6 @@ class AuthService:
                 )
 
             return await self._issue_tokens(user_entity, unit_of_work)
-
-    async def register_user(self, payload: RegisterRequest) -> TokenResponse:
-        async with UnitOfWork(self.database_session) as unit_of_work:
-            existing_user = await unit_of_work.user_repository.get_by_email(payload.email)
-            if existing_user:
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
-                    detail={"code": "EMAIL_ALREADY_EXISTS", "message": "An account with this email address already exists."}
-                )
-
-            # Public self-registration is strictly bounded to EMPLOYEE role
-            new_user = User(
-                email=payload.email,
-                password_hash=self.password_service.hash_password(payload.password),
-                first_name=payload.first_name,
-                last_name=payload.last_name,
-                role=payload.role,
-                is_active=True
-            )
-            await unit_of_work.user_repository.create(new_user)
-            
-            profile = EmployeeProfile(user_id=new_user.id)
-            self.database_session.add(profile)
-
-            return await self._issue_tokens(new_user, unit_of_work)
 
     async def refresh_tokens(self, refresh_token_string: str) -> TokenResponse:
         decoded_payload = self.token_service.decode_token(refresh_token_string, is_refresh=True)

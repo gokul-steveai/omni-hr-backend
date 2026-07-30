@@ -1,5 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.modules.users.repository import UserRepository
+
 
 class UnitOfWork:
     """

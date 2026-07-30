@@ -1,10 +1,13 @@
-import bcrypt
+import hashlib
 import uuid
 from datetime import datetime, timedelta, timezone
-import hashlib
 from typing import Any, Optional, Union
-from jose import jwt, JWTError
+
+import bcrypt
+from jose import JWTError, jwt
+
 from app.core.config import settings
+
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     try:

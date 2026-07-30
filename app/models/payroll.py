@@ -2,9 +2,13 @@ import enum
 import uuid
 from datetime import datetime, timezone
 from typing import Optional
-from sqlalchemy import String, Numeric, DateTime, ForeignKey, Enum as SQLEnum, UUID
+
+from sqlalchemy import UUID, DateTime, ForeignKey, Numeric, String
+from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.db.session import Base
+
 
 class PayRunStatus(str, enum.Enum):
     DRAFT = "draft"

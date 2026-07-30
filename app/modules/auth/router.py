@@ -1,21 +1,15 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import get_current_user
 from app.db.session import get_db
-from app.modules.auth.schemas import LoginRequest, RegisterRequest, TokenResponse, RefreshTokenRequest
+from app.models.user import User
+from app.modules.auth.schemas import LoginRequest, RefreshTokenRequest, TokenResponse
+from app.modules.auth.service import AuthService
 from app.modules.users.schemas import UserResponse
 from app.schemas.common import StandardResponse
-from app.api.deps import get_current_user
-from app.modules.auth.service import AuthService
-from app.models.user import User
 
 router = APIRouter()
-
-@router.post("/register", response_model=StandardResponse[TokenResponse], status_code=201)
-async def register(payload: RegisterRequest, db: AsyncSession = Depends(get_db)):
-    auth_service = AuthService(db)
-    token_response = await auth_service.register_user(payload)
-    return StandardResponse.ok(data=token_response)
 
 @router.post("/login", response_model=StandardResponse[TokenResponse])
 async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)):

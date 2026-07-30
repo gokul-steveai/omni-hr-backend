@@ -1,12 +1,14 @@
 import uuid
 from typing import Optional
+
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import get_password_hash
-from app.models.user import User, EmployeeProfile, UserRole
-from app.modules.users.schemas import UserResponse, UserCreate, ProfileResponse, ProfileUpdate
+from app.models.user import EmployeeProfile, User, UserRole
 from app.modules.users.repository import UserRepository
+from app.modules.users.schemas import ProfileResponse, ProfileUpdate, UserCreate, UserResponse
+
 
 class UserService:
     def __init__(self, db: AsyncSession):
