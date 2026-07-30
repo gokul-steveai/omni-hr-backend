@@ -18,12 +18,13 @@ async def lifespan(app: FastAPI):
         await conn.run_sync(Base.metadata.create_all)
     yield
 
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
     docs_url="/docs",
     redoc_url="/redoc",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 # Set CORS
@@ -35,6 +36,7 @@ if settings.BACKEND_CORS_ORIGINS:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
 
 # Custom Standardized Error Handlers
 @app.exception_handler(StarletteHTTPException)
@@ -54,14 +56,11 @@ async def custom_http_exception_handler(request: Request, exc: StarletteHTTPExce
         content={
             "success": False,
             "data": None,
-            "error": {
-                "code": code,
-                "message": message,
-                "details": details_extra
-            },
-            "meta": None
-        }
+            "error": {"code": code, "message": message, "details": details_extra},
+            "meta": None,
+        },
     )
+
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
@@ -73,21 +72,19 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
             "error": {
                 "code": "VALIDATION_ERROR",
                 "message": "Request payload or parameters failed validation.",
-                "details": {"errors": exc.errors()}
+                "details": {"errors": exc.errors()},
             },
-            "meta": None
-        }
+            "meta": None,
+        },
     )
 
+
 app.include_router(api_router, prefix=settings.API_V1_STR)
+
 
 @app.get("/")
 async def root():
     return {
         "success": True,
-        "data": {
-            "name": settings.PROJECT_NAME,
-            "version": "1.0.0",
-            "docs": "/docs"
-        }
+        "data": {"name": settings.PROJECT_NAME, "version": "1.0.0", "docs": "/docs"},
     }
