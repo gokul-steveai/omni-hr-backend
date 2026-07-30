@@ -32,7 +32,7 @@ class UserService:
         users, total = await self.user_repo.search_users(
             offset=offset,
             limit=limit,
-            search=search,
+            search_term=search,
             department_id=department_id,
             role=role,
         )
