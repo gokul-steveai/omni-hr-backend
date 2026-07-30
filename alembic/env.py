@@ -6,16 +6,20 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
-
 from app.core.config import settings
 from app.db.session import Base
-from app.models.user import User, EmployeeProfile, RefreshToken # noqa: F401
-from app.models.organization import Department, Designation # noqa: F401
-from app.models.leave import LeaveType, LeaveAllocation, LeaveRequest, LeaveApproval # noqa: F401
-from app.models.timesheet import Project, TimesheetEntry # noqa: F401
-from app.models.payroll import SalaryStructure, PayRun, Payslip # noqa: F401
-from app.models.holiday import CompanyHoliday # noqa: F401
-from app.models.audit import AuditLog # noqa: F401
+from app.models.audit import AuditLog  # noqa: F401
+from app.models.holiday import CompanyHoliday  # noqa: F401
+from app.models.leave import (  # noqa: F401
+    LeaveAllocation,
+    LeaveApproval,
+    LeaveRequest,
+    LeaveType,
+)
+from app.models.organization import Department, Designation  # noqa: F401
+from app.models.payroll import PayRun, Payslip, SalaryStructure  # noqa: F401
+from app.models.timesheet import Project, TimesheetEntry  # noqa: F401
+from app.models.user import EmployeeProfile, RefreshToken, User  # noqa: F401
 
 config = context.config
 
