@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from app.models.organization import Department, Designation
     from app.models.payroll import SalaryStructure
 
+
 class UserRole(str, PyEnum):
     SUPER_ADMIN = "super_admin"
     HR_MANAGER = "hr_manager"
