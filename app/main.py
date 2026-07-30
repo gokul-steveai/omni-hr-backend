@@ -1,13 +1,15 @@
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request, status
-from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.core.config import settings
-from app.db.session import engine, Base
 from app.api.v1.router import api_router
+from app.core.config import settings
+from app.db.session import Base, engine
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

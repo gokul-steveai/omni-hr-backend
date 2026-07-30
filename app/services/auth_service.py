@@ -1,12 +1,21 @@
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
+
+from app.repositories.user_repository import UserRepository
+from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.security import verify_password, get_password_hash, create_access_token, create_refresh_token, decode_token, hash_token
-from app.models.user import User, EmployeeProfile, RefreshToken
-from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse
-from app.repositories.user_repository import UserRepository
+from app.core.security import (
+    create_access_token,
+    create_refresh_token,
+    decode_token,
+    get_password_hash,
+    hash_token,
+    verify_password,
+)
+from app.models.user import EmployeeProfile, RefreshToken, User
+
 
 class AuthService:
     def __init__(self, db: AsyncSession):

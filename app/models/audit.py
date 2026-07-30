@@ -1,9 +1,12 @@
 import uuid
 from datetime import datetime, timezone
-from typing import Optional, Any
-from sqlalchemy import String, DateTime, ForeignKey, JSON, UUID
+from typing import Any, Optional
+
+from sqlalchemy import JSON, UUID, DateTime, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column
+
 from app.db.session import Base
+
 
 class AuditLog(Base):
     __tablename__ = "audit_logs"

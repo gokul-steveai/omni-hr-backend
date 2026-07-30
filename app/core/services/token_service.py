@@ -1,10 +1,12 @@
-import uuid
 import hashlib
+import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional, Union
-from jose import jwt, JWTError
+
+from jose import JWTError, jwt
 
 from app.core.config import settings
+
 
 class TokenService:
     """Decoupled JWT Token Generation, Decoding, and Hashing Service."""

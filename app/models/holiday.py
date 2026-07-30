@@ -1,9 +1,12 @@
 import uuid
-from datetime import datetime, date, timezone
+from datetime import date, datetime, timezone
 from typing import Optional
-from sqlalchemy import String, Boolean, Date, DateTime, Text, UUID
+
+from sqlalchemy import UUID, Boolean, Date, DateTime, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
+
 from app.db.session import Base
+
 
 class CompanyHoliday(Base):
     __tablename__ = "company_holidays"

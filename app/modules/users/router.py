@@ -1,14 +1,15 @@
 import uuid
 from typing import Optional
+
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import get_current_user, require_roles
 from app.db.session import get_db
 from app.models.user import User, UserRole
-from app.modules.users.schemas import UserResponse, UserCreate, ProfileResponse, ProfileUpdate
+from app.modules.users.schemas import ProfileResponse, ProfileUpdate, UserCreate, UserResponse
 from app.modules.users.service import UserService
-from app.schemas.common import StandardResponse, MetaPayload
-from app.api.deps import get_current_user, require_roles
+from app.schemas.common import MetaPayload, StandardResponse
 
 router = APIRouter()
 

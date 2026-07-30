@@ -1,10 +1,9 @@
 import uuid
 from typing import Callable
+
 from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from sqlalchemy import select
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from app.core.services.token_service import TokenService
 from app.db.session import get_db
@@ -38,7 +37,7 @@ async def get_current_user(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail={"code": "INVALID_TOKEN", "message": "Malformed token subject UUID."}
-        )
+        ) from None
 
     user_repo = UserRepository(db)
     user = await user_repo.get_with_details(user_uuid)

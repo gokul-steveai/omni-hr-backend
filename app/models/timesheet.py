@@ -1,9 +1,12 @@
 import uuid
-from datetime import datetime, date, timezone
+from datetime import date, datetime, timezone
 from typing import Optional
-from sqlalchemy import String, Numeric, Boolean, Date, DateTime, ForeignKey, Text, UUID
+
+from sqlalchemy import UUID, Boolean, Date, DateTime, ForeignKey, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.db.session import Base
+
 
 class Project(Base):
     __tablename__ = "projects"

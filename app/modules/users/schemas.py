@@ -1,8 +1,11 @@
 import uuid
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, EmailStr, ConfigDict
+
+from pydantic import BaseModel, ConfigDict, EmailStr
+
 from app.models.user import UserRole
+
 
 class DepartmentBase(BaseModel):
     id: uuid.UUID
@@ -22,8 +25,7 @@ class ProfileResponse(BaseModel):
     bank_account_number: Optional[str] = None
     bank_name: Optional[str] = None
     ifsc_swift_code: Optional[str] = None
-    pan_ssn: Optional[str] = None
-    joining_date: datetime
+    joining_date: Optional[datetime] = None
     model_config = ConfigDict(from_attributes=True)
 
 class ProfileUpdate(BaseModel):

@@ -1,10 +1,14 @@
 import enum
 import uuid
-from datetime import datetime, date, timezone
+from datetime import date, datetime, timezone
 from typing import Optional
-from sqlalchemy import String, Integer, Numeric, Boolean, Date, DateTime, ForeignKey, Enum as SQLEnum, Text, UUID
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from sqlalchemy import UUID, Boolean, Date, DateTime, ForeignKey, Integer, Numeric, Text
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy.orm import Mapped, mapped_column
+
 from app.db.session import Base
+
 
 class LeaveTypeEnum(str, enum.Enum):
     CASUAL = "casual"
