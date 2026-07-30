@@ -8,6 +8,7 @@ class UnitOfWork:
     Unit of Work Pattern to manage atomic database transactions
     and decouple Services from raw SQLAlchemy session handles.
     """
+
     def __init__(self, database_session: AsyncSession):
         self.database_session = database_session
         self.user_repository = UserRepository(database_session)

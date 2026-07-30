@@ -16,7 +16,11 @@ class UserRepository(BaseRepository[User]):
     async def get_by_email(self, email_address: str) -> Optional[User]:
         query_result = await self.database_session.execute(
             select(User)
-            .options(selectinload(User.department), selectinload(User.designation), selectinload(User.profile))
+            .options(
+                selectinload(User.department),
+                selectinload(User.designation),
+                selectinload(User.profile),
+            )
             .where(User.email == email_address)
         )
         return query_result.scalar_one_or_none()
@@ -24,7 +28,11 @@ class UserRepository(BaseRepository[User]):
     async def get_with_details(self, user_id: uuid.UUID) -> Optional[User]:
         query_result = await self.database_session.execute(
             select(User)
-            .options(selectinload(User.department), selectinload(User.designation), selectinload(User.profile))
+            .options(
+                selectinload(User.department),
+                selectinload(User.designation),
+                selectinload(User.profile),
+            )
             .where(User.id == user_id)
         )
         return query_result.scalar_one_or_none()
@@ -35,12 +43,12 @@ class UserRepository(BaseRepository[User]):
         limit: int = 20,
         search_term: Optional[str] = None,
         department_id: Optional[uuid.UUID] = None,
-        role: Optional[UserRole] = None
+        role: Optional[UserRole] = None,
     ) -> tuple[Sequence[User], int]:
         query = select(User).options(
             selectinload(User.department),
             selectinload(User.designation),
-            selectinload(User.profile)
+            selectinload(User.profile),
         )
 
         if department_id:
@@ -53,7 +61,7 @@ class UserRepository(BaseRepository[User]):
                 or_(
                     User.first_name.ilike(search_pattern),
                     User.last_name.ilike(search_pattern),
-                    User.email.ilike(search_pattern)
+                    User.email.ilike(search_pattern),
                 )
             )
 
@@ -68,12 +76,14 @@ class UserRepository(BaseRepository[User]):
         query_result = await self.database_session.execute(
             select(RefreshToken).where(
                 RefreshToken.token_hash == token_hash,
-                RefreshToken.is_revoked.is_(False)
+                RefreshToken.is_revoked.is_(False),
             )
         )
         return query_result.scalar_one_or_none()
 
-    async def save_refresh_token(self, refresh_token_entity: RefreshToken) -> RefreshToken:
+    async def save_refresh_token(
+        self, refresh_token_entity: RefreshToken
+    ) -> RefreshToken:
         self.database_session.add(refresh_token_entity)
         await self.database_session.flush()
         return refresh_token_entity

@@ -7,7 +7,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.security import get_password_hash
 from app.models.user import EmployeeProfile, User, UserRole
 from app.modules.users.repository import UserRepository
-from app.modules.users.schemas import ProfileResponse, ProfileUpdate, UserCreate, UserResponse
+from app.modules.users.schemas import (
+    ProfileResponse,
+    ProfileUpdate,
+    UserCreate,
+    UserResponse,
+)
 
 
 class UserService:
@@ -21,11 +26,15 @@ class UserService:
         limit: int = 20,
         search: Optional[str] = None,
         department_id: Optional[uuid.UUID] = None,
-        role: Optional[UserRole] = None
+        role: Optional[UserRole] = None,
     ) -> tuple[list[UserResponse], int]:
         offset = (page - 1) * limit
         users, total = await self.user_repo.search_users(
-            offset=offset, limit=limit, search=search, department_id=department_id, role=role
+            offset=offset,
+            limit=limit,
+            search=search,
+            department_id=department_id,
+            role=role,
         )
         return [UserResponse.model_validate(u) for u in users], total
 
@@ -34,7 +43,10 @@ class UserService:
         if existing:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail={"code": "EMAIL_ALREADY_EXISTS", "message": "An account with this email address already exists."}
+                detail={
+                    "code": "EMAIL_ALREADY_EXISTS",
+                    "message": "An account with this email address already exists.",
+                },
             )
 
         new_user = User(
@@ -46,7 +58,7 @@ class UserService:
             department_id=payload.department_id,
             designation_id=payload.designation_id,
             manager_id=payload.manager_id,
-            is_active=True
+            is_active=True,
         )
         await self.user_repo.create(new_user)
 
@@ -67,7 +79,9 @@ class UserService:
 
         return ProfileResponse.model_validate(profile)
 
-    async def update_profile(self, user_id: uuid.UUID, payload: ProfileUpdate) -> ProfileResponse:
+    async def update_profile(
+        self, user_id: uuid.UUID, payload: ProfileUpdate
+    ) -> ProfileResponse:
         profile = await self.user_repo.get_profile(user_id)
         if not profile:
             profile = EmployeeProfile(user_id=user_id)

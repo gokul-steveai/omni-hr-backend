@@ -4,15 +4,18 @@ from pydantic import BaseModel
 
 T = TypeVar("T")
 
+
 class MetaPayload(BaseModel):
     page: Optional[int] = 1
     limit: Optional[int] = 20
     total: Optional[int] = 0
 
+
 class ErrorDetail(BaseModel):
     code: str
     message: str
     details: Optional[dict[str, Any]] = None
+
 
 class StandardResponse(BaseModel, Generic[T]):
     success: bool = True
@@ -25,10 +28,12 @@ class StandardResponse(BaseModel, Generic[T]):
         return cls(success=True, data=data, error=None, meta=meta)
 
     @classmethod
-    def fail(cls, code: str, message: str, details: Optional[dict[str, Any]] = None) -> "StandardResponse[Any]":
+    def fail(
+        cls, code: str, message: str, details: Optional[dict[str, Any]] = None
+    ) -> "StandardResponse[Any]":
         return cls(
             success=False,
             data=None,
             error=ErrorDetail(code=code, message=message, details=details),
-            meta=None
+            meta=None,
         )

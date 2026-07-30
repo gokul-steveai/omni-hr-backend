@@ -12,10 +12,12 @@ class DepartmentBase(BaseModel):
     name: str
     model_config = ConfigDict(from_attributes=True)
 
+
 class DesignationBase(BaseModel):
     id: uuid.UUID
     title: str
     model_config = ConfigDict(from_attributes=True)
+
 
 class ProfileResponse(BaseModel):
     id: uuid.UUID
@@ -28,6 +30,7 @@ class ProfileResponse(BaseModel):
     joining_date: Optional[datetime] = None
     model_config = ConfigDict(from_attributes=True)
 
+
 class ProfileUpdate(BaseModel):
     phone_number: Optional[str] = None
     emergency_contact: Optional[str] = None
@@ -36,6 +39,7 @@ class ProfileUpdate(BaseModel):
     bank_name: Optional[str] = None
     ifsc_swift_code: Optional[str] = None
     pan_ssn: Optional[str] = None
+
 
 class UserResponse(BaseModel):
     id: uuid.UUID
@@ -50,6 +54,7 @@ class UserResponse(BaseModel):
     profile: Optional[ProfileResponse] = None
     created_at: datetime
     model_config = ConfigDict(from_attributes=True)
+
 
 class UserCreate(BaseModel):
     email: EmailStr

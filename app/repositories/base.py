@@ -8,9 +8,10 @@ from app.db.session import Base
 
 ModelType = TypeVar("ModelType", bound=Base)
 
+
 class BaseRepository(Generic[ModelType]):
     """Generic Base Repository providing standardized async CRUD and pagination operations."""
-    
+
     def __init__(self, model_class: Type[ModelType], database_session: AsyncSession):
         self.model_class = model_class
         self.database_session = database_session
@@ -22,13 +23,16 @@ class BaseRepository(Generic[ModelType]):
         return result.scalar_one_or_none()
 
     async def list_paginated(
-        self, offset: int = 0, limit: int = 20, filter_conditions: Optional[list[Any]] = None
+        self,
+        offset: int = 0,
+        limit: int = 20,
+        filter_conditions: Optional[list[Any]] = None,
     ) -> tuple[Sequence[ModelType], int]:
         query = select(self.model_class)
         if filter_conditions:
             for condition in filter_conditions:
                 query = query.where(condition)
-        
+
         count_query = select(func.count()).select_from(query.subquery())
         total_records = (await self.database_session.execute(count_query)).scalar() or 0
 
@@ -41,7 +45,9 @@ class BaseRepository(Generic[ModelType]):
         await self.database_session.flush()
         return entity_instance
 
-    async def update(self, entity_instance: ModelType, update_data: dict[str, Any]) -> ModelType:
+    async def update(
+        self, entity_instance: ModelType, update_data: dict[str, Any]
+    ) -> ModelType:
         for field_name, field_value in update_data.items():
             if hasattr(entity_instance, field_name) and field_value is not None:
                 setattr(entity_instance, field_name, field_value)
