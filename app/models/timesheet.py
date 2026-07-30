@@ -1,0 +1,34 @@
+import uuid
+from datetime import datetime, date, timezone
+from typing import Optional
+from sqlalchemy import String, Numeric, Boolean, Date, DateTime, ForeignKey, Text, UUID
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from app.db.session import Base
+
+class Project(Base):
+    __tablename__ = "projects"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name: Mapped[str] = mapped_column(String(150), unique=True, nullable=False)
+    code: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    department_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("departments.id", ondelete="SET NULL"), nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    # Relationship
+    department: Mapped[Optional["Department"]] = relationship("Department", back_populates="projects")
+
+class TimesheetEntry(Base):
+    __tablename__ = "timesheet_entries"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    project_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("projects.id", ondelete="SET NULL"), nullable=True)
+    work_date: Mapped[date] = mapped_column(Date, nullable=False)
+    hours_spent: Mapped[float] = mapped_column(Numeric(4, 2), nullable=False)
+    is_billable: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    activity_summary: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), default="draft", nullable=False)
+    approver_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))

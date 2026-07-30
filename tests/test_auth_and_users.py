@@ -1,0 +1,135 @@
+import pytest
+import pytest_asyncio
+from httpx import AsyncClient, ASGITransport
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy.pool import StaticPool
+
+from app.main import app
+from app.db.session import Base, get_db
+from app.core.security import get_password_hash
+from app.models.user import User, UserRole, EmployeeProfile
+
+# Use SQLite in-memory for fast asynchronous unit testing
+TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+
+test_engine = create_async_engine(
+    TEST_DATABASE_URL,
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
+)
+
+TestingSessionLocal = async_sessionmaker(
+    bind=test_engine,
+    class_=AsyncSession,
+    expire_on_commit=False
+)
+
+async def override_get_db():
+    async with TestingSessionLocal() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+        finally:
+            await session.close()
+
+app.dependency_overrides[get_db] = override_get_db
+
+@pytest_asyncio.fixture(autouse=True)
+async def setup_test_db():
+    async with test_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    
+    # Seed test users
+    async with TestingSessionLocal() as session:
+        admin = User(
+            email="admin_test@omnihr.com",
+            password_hash=get_password_hash("TestPass123!"),
+            first_name="Admin",
+            last_name="Tester",
+            role=UserRole.SUPER_ADMIN,
+            is_active=True
+        )
+        emp = User(
+            email="emp_test@omnihr.com",
+            password_hash=get_password_hash("EmpPass123!"),
+            first_name="Employee",
+            last_name="Tester",
+            role=UserRole.EMPLOYEE,
+            is_active=True
+        )
+        session.add_all([admin, emp])
+        await session.flush()
+        
+        session.add(EmployeeProfile(user_id=admin.id, phone_number="1234567890"))
+        session.add(EmployeeProfile(user_id=emp.id, phone_number="9876543210"))
+        await session.commit()
+
+    yield
+
+    async with test_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+
+@pytest.mark.asyncio
+async def test_login_success():
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        res = await ac.post("/api/v1/auth/login", json={"email": "admin_test@omnihr.com", "password": "TestPass123!"})
+        assert res.status_code == 200
+        body = res.json()
+        assert body["success"] is True
+        assert "access_token" in body["data"]
+        assert "refresh_token" in body["data"]
+
+@pytest.mark.asyncio
+async def test_login_invalid_password():
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        res = await ac.post("/api/v1/auth/login", json={"email": "admin_test@omnihr.com", "password": "WrongPassword"})
+        assert res.status_code == 401
+        body = res.json()
+        assert body["success"] is False
+        assert body["error"]["code"] == "INVALID_CREDENTIALS"
+
+@pytest.mark.asyncio
+async def test_get_current_user():
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        login_res = await ac.post("/api/v1/auth/login", json={"email": "admin_test@omnihr.com", "password": "TestPass123!"})
+        token = login_res.json()["data"]["access_token"]
+
+        me_res = await ac.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {token}"})
+        assert me_res.status_code == 200
+        body = me_res.json()
+        assert body["success"] is True
+        assert body["data"]["email"] == "admin_test@omnihr.com"
+        assert body["data"]["role"] == "super_admin"
+
+@pytest.mark.asyncio
+async def test_rbac_permission_denied_for_regular_employee():
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        login_res = await ac.post("/api/v1/auth/login", json={"email": "emp_test@omnihr.com", "password": "EmpPass123!"})
+        emp_token = login_res.json()["data"]["access_token"]
+
+        # Regular employee trying to list all users
+        users_res = await ac.get("/api/v1/users", headers={"Authorization": f"Bearer {emp_token}"})
+        assert users_res.status_code == 403
+        body = users_res.json()
+        assert body["success"] is False
+        assert body["error"]["code"] == "INSUFFICIENT_PERMISSIONS"
+
+@pytest.mark.asyncio
+async def test_self_service_profile_update():
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        login_res = await ac.post("/api/v1/auth/login", json={"email": "emp_test@omnihr.com", "password": "EmpPass123!"})
+        emp_token = login_res.json()["data"]["access_token"]
+
+        update_res = await ac.put(
+            "/api/v1/users/me/profile",
+            headers={"Authorization": f"Bearer {emp_token}"},
+            json={"phone_number": "+1-999-888-7777", "address": "Scranton Business Park"}
+        )
+        assert update_res.status_code == 200
+        body = update_res.json()
+        assert body["success"] is True
+        assert body["data"]["phone_number"] == "+1-999-888-7777"
+        assert body["data"]["address"] == "Scranton Business Park"
