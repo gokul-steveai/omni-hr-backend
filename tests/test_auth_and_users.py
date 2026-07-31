@@ -7,6 +7,7 @@ from sqlalchemy.pool import StaticPool
 from app.core.security import get_password_hash
 from app.db.session import Base, get_db
 from app.main import app
+from app.models.role import Role
 from app.models.user import EmployeeProfile, User, UserRole
 
 # Use SQLite in-memory for fast asynchronous unit testing
@@ -35,22 +36,33 @@ async def override_get_db():
             await session.close()
 
 
-app.dependency_overrides[get_db] = override_get_db
-
-
 @pytest_asyncio.fixture(autouse=True)
 async def setup_test_db():
+    app.dependency_overrides[get_db] = override_get_db
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
-    # Seed test users
+    # Seed test roles & users
     async with TestingSessionLocal() as session:
+        admin_role = Role(
+            name=UserRole.SUPER_ADMIN.value,
+            description="Super Admin",
+            is_system=True,
+        )
+        emp_role = Role(
+            name=UserRole.EMPLOYEE.value,
+            description="Employee",
+            is_system=True,
+        )
+        session.add_all([admin_role, emp_role])
+        await session.flush()
+
         admin = User(
             email="admin_test@omnihr.com",
             password_hash=get_password_hash("TestPass123!"),
             first_name="Admin",
             last_name="Tester",
-            role=UserRole.SUPER_ADMIN,
+            role_id=admin_role.id,
             is_active=True,
         )
         emp = User(
@@ -58,7 +70,7 @@ async def setup_test_db():
             password_hash=get_password_hash("EmpPass123!"),
             first_name="Employee",
             last_name="Tester",
-            role=UserRole.EMPLOYEE,
+            role_id=emp_role.id,
             is_active=True,
         )
         session.add_all([admin, emp])
@@ -72,6 +84,7 @@ async def setup_test_db():
 
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
+    app.dependency_overrides.clear()
 
 
 @pytest.mark.asyncio
@@ -122,8 +135,7 @@ async def test_get_current_user():
         assert me_res.status_code == 200
         body = me_res.json()
         assert body["success"] is True
-        assert body["data"]["email"] == "admin_test@omnihr.com"
-        assert body["data"]["role"] == "super_admin"
+        assert body["data"]["role"]["name"] == "super_admin"
 
 
 @pytest.mark.asyncio

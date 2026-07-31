@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from enum import Enum as PyEnum
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, String
+from sqlalchemy import Boolean, DateTime, ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -12,6 +12,7 @@ from app.db.session import Base
 if TYPE_CHECKING:
     from app.models.organization import Department, Designation
     from app.models.payroll import SalaryStructure
+    from app.models.role import Role
 
 
 class UserRole(str, PyEnum):
@@ -33,8 +34,14 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     first_name: Mapped[str] = mapped_column(String(100), nullable=False)
     last_name: Mapped[str] = mapped_column(String(100), nullable=False)
-    role: Mapped[UserRole] = mapped_column(
-        Enum(UserRole), default=UserRole.EMPLOYEE, nullable=False
+
+    role_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("roles.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    role: Mapped[Optional["Role"]] = relationship(
+        "Role", back_populates="users", lazy="selectin"
     )
 
     department_id: Mapped[Optional[uuid.UUID]] = mapped_column(

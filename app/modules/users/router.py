@@ -25,7 +25,8 @@ async def list_users(
     limit: int = Query(20, ge=1, le=100),
     search: Optional[str] = Query(None),
     department_id: Optional[uuid.UUID] = Query(None),
-    role: Optional[UserRole] = Query(None),
+    role_id: Optional[uuid.UUID] = Query(None),
+    role_name: Optional[str] = Query(None),
     current_user: User = Depends(
         require_roles(
             [UserRole.SUPER_ADMIN, UserRole.HR_MANAGER, UserRole.DEPARTMENT_LEAD]
@@ -35,7 +36,12 @@ async def list_users(
 ):
     user_service = UserService(db)
     user_list, total = await user_service.list_users(
-        page=page, limit=limit, search=search, department_id=department_id, role=role
+        page=page,
+        limit=limit,
+        search=search,
+        department_id=department_id,
+        role_id=role_id,
+        role_name=role_name,
     )
     meta = MetaPayload(page=page, limit=limit, total=total)
     return StandardResponse.ok(data=user_list, meta=meta)

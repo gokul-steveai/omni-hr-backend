@@ -46,13 +46,21 @@
 *   `POST /api/v1/auth/login` - Authenticate with email/password & return JWT access + refresh tokens.
 *   `POST /api/v1/auth/refresh` - Rotate refresh token to obtain a new access token.
 *   `POST /api/v1/auth/logout` - Revoke current refresh token and invalidate session.
-*   `GET /api/v1/users/me` - Fetch current user info and roles.
+*   `GET /api/v1/users/me` - Fetch current user info, active `role`, and assigned `permissions`.
 *   `GET /api/v1/users/me/profile` - Fetch self-service profile details (phone, bank, emergency contacts).
 *   `PUT /api/v1/users/me/profile` - Update allowed self-service profile fields.
 
-### 3.2 User & Department Directory (Admin/HR/Lead)
-*   `GET /api/v1/users` - Searchable, paginated user list with filter by `department_id`, `designation_id`, `role`.
-*   `POST /api/v1/users` - Create user account (HR/Admin only).
+### 3.2 Roles & Permissions Management (RBAC)
+*   `GET /api/v1/roles` - List all system and custom roles with their permissions.
+*   `POST /api/v1/roles` - Create a new custom role with assigned permission IDs (Super Admin only).
+*   `GET /api/v1/roles/{role_id}` - Get detailed role specifications and permissions list.
+*   `PUT /api/v1/roles/{role_id}` - Update role metadata and permissions list (Super Admin only).
+*   `DELETE /api/v1/roles/{role_id}` - Delete custom role (Protected against deleting system roles or roles in use).
+*   `GET /api/v1/permissions` - List available system permissions grouped by module (`users`, `roles`, `leave`, `payroll`, `timesheet`, `audit`).
+
+### 3.3 User & Department Directory (Admin/HR/Lead)
+*   `GET /api/v1/users` - Searchable, paginated user list with filters by `department_id`, `role_id`, or `role_name`.
+*   `POST /api/v1/users` - Create user account with optional `role_id` (defaults to Employee system role if omitted).
 *   `GET /api/v1/departments` - List all departments.
 
 ### 3.3 Leaves & Approvals Module

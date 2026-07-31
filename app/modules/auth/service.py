@@ -85,7 +85,7 @@ class AuthService:
 
             persisted_token.is_revoked = True
 
-            user_entity = await unit_of_work.user_repository.get_by_id(
+            user_entity = await unit_of_work.user_repository.get_with_details(
                 persisted_token.user_id
             )
             if not user_entity or not user_entity.is_active:
@@ -111,8 +111,9 @@ class AuthService:
     async def _issue_tokens(
         self, user_entity: User, unit_of_work: UnitOfWork
     ) -> TokenResponse:
+        role_name = user_entity.role.name if user_entity.role else "employee"
         access_token_jwt = self.token_service.create_access_token(
-            subject=str(user_entity.id), roles=[user_entity.role.value]
+            subject=str(user_entity.id), roles=[role_name]
         )
         refresh_token_jwt = self.token_service.create_refresh_token(
             subject=str(user_entity.id)
