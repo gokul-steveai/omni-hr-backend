@@ -1,4 +1,5 @@
 import uuid
+from enum import Enum
 from typing import Callable
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -7,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.services.token_service import TokenService
 from app.db.session import get_db
+from app.models.role import PermissionEnum
 from app.models.user import User, UserRole
 from app.modules.auth.service import AuthService
 from app.modules.roles.repository import RoleRepository
@@ -125,7 +127,7 @@ async def get_current_user(
     return user
 
 
-def require_roles(allowed_roles: list[UserRole | str]) -> Callable[[User], User]:
+def require_roles(allowed_roles: list[UserRole | str]) -> Callable:
     async def role_checker(current_user: User = Depends(get_current_user)) -> User:
         allowed_names = [
             r.value if isinstance(r, UserRole) else str(r) for r in allowed_roles
@@ -148,7 +150,15 @@ def require_roles(allowed_roles: list[UserRole | str]) -> Callable[[User], User]
     return role_checker
 
 
-def require_permission(permission_code: str) -> Callable[[User], User]:
+def require_permission(
+    permission_code: PermissionEnum | str,
+) -> Callable:
+    target_code = (
+        permission_code.value
+        if isinstance(permission_code, Enum)
+        else str(permission_code)
+    )
+
     async def permission_checker(
         current_user: User = Depends(get_current_user),
     ) -> User:
@@ -164,12 +174,12 @@ def require_permission(permission_code: str) -> Callable[[User], User]:
             else []
         )
 
-        if permission_code not in user_permissions:
+        if target_code not in user_permissions:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail={
                     "code": "PERMISSION_DENIED",
-                    "message": f"Required permission '{permission_code}' is missing.",
+                    "message": f"Required permission '{target_code}' is missing.",
                 },
             )
         return current_user

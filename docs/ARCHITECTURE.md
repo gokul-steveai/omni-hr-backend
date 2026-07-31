@@ -16,7 +16,7 @@ backend/
 │   ├── api/                            # Common Dependencies & ProtectedAPIRouter (deps.py)
 │   ├── core/                           # Config, PasswordService, TokenService
 │   ├── repositories/                   # BaseRepository[ModelType]
-│   └── models/                         # SQLAlchemy 2.0 ORM Entity Blueprints
+│   └── models/                         # SQLAlchemy 2.0 ORM Entity Blueprints (PermissionEnum)
 ├── scripts/                            # Verification & DB Seed Scripts
 └── pyproject.toml                      # `uv` Dependency & Project Configuration
 ```
@@ -25,13 +25,11 @@ backend/
 
 ## 2. Architectural Patterns
 
+* **Type-Safe RBAC & PermissionEnum**: All fine-grained permission codes are defined in `PermissionEnum(str, Enum)` in `app.models.role`. Endpoints enforce permissions via `@require_permission(PermissionEnum.USERS_READ)`.
 * **ProtectedAPIRouter & Router-Level Auth**: Protected modules instantiate `ProtectedAPIRouter`, enforcing `Depends(get_current_user)` authentication across all endpoints automatically. Unauthenticated endpoints (`/login`, `/refresh`) mount on `public_auth_router`.
 * **Constructor Dependency Injection**: Services receive repository dependencies via constructors. API endpoints inject services directly via `Depends(get_*_service)`.
 * **Repository Pattern**: Data access is isolated within `BaseRepository[ModelType]` and domain repositories.
 * **Service-Repository Decoupling**: API routers delegate 100% of business logic to domain services.
-* **Dynamic RBAC & Fine-Grained Permissions**:
-  - Roles and permissions are stored dynamically in relational tables (`roles`, `permissions`, `role_permissions`).
-  - Endpoints enforce granular permission checks via `@require_permission("code")` dependencies.
 
 ---
 

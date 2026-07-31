@@ -9,6 +9,7 @@ from app.api.deps import (
     get_user_service,
     require_permission,
 )
+from app.models.role import PermissionEnum
 from app.models.user import User
 from app.modules.users.schemas import (
     ProfileResponse,
@@ -34,7 +35,7 @@ async def list_users(
     department_id: Optional[uuid.UUID] = Query(None),
     role_id: Optional[uuid.UUID] = Query(None),
     role_name: Optional[str] = Query(None),
-    current_user: User = Depends(require_permission("users:read")),
+    current_user: User = Depends(require_permission(PermissionEnum.USERS_READ)),
     user_service: UserService = Depends(get_user_service),
 ):
     user_list, total = await user_service.list_users(
@@ -57,7 +58,7 @@ async def list_users(
 )
 async def create_user(
     payload: UserCreate,
-    current_user: User = Depends(require_permission("users:write")),
+    current_user: User = Depends(require_permission(PermissionEnum.USERS_WRITE)),
     user_service: UserService = Depends(get_user_service),
 ):
     created_user = await user_service.create_user(payload, current_user)

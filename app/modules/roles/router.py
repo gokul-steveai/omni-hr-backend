@@ -4,6 +4,7 @@ from typing import Optional
 from fastapi import Depends, Query, status
 
 from app.api.deps import ProtectedAPIRouter, get_role_service, require_permission
+from app.models.role import PermissionEnum
 from app.modules.roles.schemas import (
     PermissionCreate,
     PermissionRead,
@@ -24,7 +25,7 @@ permissions_router = ProtectedAPIRouter(
 @router.get(
     "",
     response_model=StandardResponse[list[RoleRead]],
-    dependencies=[Depends(require_permission("roles:read"))],
+    dependencies=[Depends(require_permission(PermissionEnum.ROLES_READ))],
     response_model_exclude_none=True,
 )
 async def list_roles(
@@ -42,7 +43,7 @@ async def list_roles(
 @permissions_router.get(
     "",
     response_model=StandardResponse[list[PermissionRead]],
-    dependencies=[Depends(require_permission("roles:read"))],
+    dependencies=[Depends(require_permission(PermissionEnum.ROLES_READ))],
     response_model_exclude_none=True,
 )
 async def list_permissions(
@@ -63,7 +64,7 @@ async def list_permissions(
 @router.get(
     "/{role_id}/permissions",
     response_model=StandardResponse[list[PermissionRead]],
-    dependencies=[Depends(require_permission("roles:read"))],
+    dependencies=[Depends(require_permission(PermissionEnum.ROLES_READ))],
     response_model_exclude_none=True,
 )
 async def get_role_permissions(
@@ -79,47 +80,50 @@ async def get_role_permissions(
     "",
     response_model=PermissionRead,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_permission("roles:write"))],
+    dependencies=[Depends(require_permission(PermissionEnum.ROLES_WRITE))],
     response_model_exclude_none=True,
 )
 async def create_permission(
     perm_in: PermissionCreate,
     role_service: RoleService = Depends(get_role_service),
 ) -> PermissionRead:
-    return await role_service.create_permission(perm_in)
+    created_permission = await role_service.create_permission(perm_in)
+    return PermissionRead.model_validate(created_permission)
 
 
 @router.post(
     "",
     response_model=RoleWithPermissionsRead,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_permission("roles:write"))],
+    dependencies=[Depends(require_permission(PermissionEnum.ROLES_WRITE))],
     response_model_exclude_none=True,
 )
 async def create_role(
     role_in: RoleCreate,
     role_service: RoleService = Depends(get_role_service),
 ) -> RoleWithPermissionsRead:
-    return await role_service.create_role(role_in)
+    created_role = await role_service.create_role(role_in)
+    return RoleWithPermissionsRead.model_validate(created_role)
 
 
 @router.get(
     "/{role_id}",
     response_model=RoleWithPermissionsRead,
-    dependencies=[Depends(require_permission("roles:read"))],
+    dependencies=[Depends(require_permission(PermissionEnum.ROLES_READ))],
     response_model_exclude_none=True,
 )
 async def get_role(
     role_id: uuid.UUID,
     role_service: RoleService = Depends(get_role_service),
 ) -> RoleWithPermissionsRead:
-    return await role_service.get_role(role_id)
+    role_entity = await role_service.get_role(role_id)
+    return RoleWithPermissionsRead.model_validate(role_entity)
 
 
 @router.put(
     "/{role_id}",
     response_model=RoleWithPermissionsRead,
-    dependencies=[Depends(require_permission("roles:write"))],
+    dependencies=[Depends(require_permission(PermissionEnum.ROLES_WRITE))],
     response_model_exclude_none=True,
 )
 async def update_role(
@@ -127,13 +131,14 @@ async def update_role(
     role_in: RoleUpdate,
     role_service: RoleService = Depends(get_role_service),
 ) -> RoleWithPermissionsRead:
-    return await role_service.update_role(role_id, role_in)
+    updated_role = await role_service.update_role(role_id, role_in)
+    return RoleWithPermissionsRead.model_validate(updated_role)
 
 
 @router.delete(
     "/{role_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(require_permission("roles:delete"))],
+    dependencies=[Depends(require_permission(PermissionEnum.ROLES_DELETE))],
     response_model_exclude_none=True,
 )
 async def delete_role(
