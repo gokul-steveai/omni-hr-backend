@@ -22,7 +22,7 @@ Coding standards, architecture principles, and software design patterns for the 
 
 ### 1.4 Type-Safe Permissions & ProtectedAPIRouter
 * All RBAC permission codes are defined centrally in `PermissionEnum(str, Enum)` in `app.models.role`.
-* Endpoints pass `PermissionEnum` members to `@require_permission(PermissionEnum.USERS_READ)` for type-safe authorization checks.
+* Endpoints pass `PermissionEnum` members to `Depends(require_permission(PermissionEnum.USERS_READ))` for type-safe authorization checks.
 * Protected domain modules instantiate `ProtectedAPIRouter`, enforcing token authentication automatically at the router level.
 
 ### 1.5 Expressive Naming Standard

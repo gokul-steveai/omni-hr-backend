@@ -25,7 +25,7 @@ backend/
 
 ## 2. Architectural Patterns
 
-* **Type-Safe RBAC & PermissionEnum**: All fine-grained permission codes are defined in `PermissionEnum(str, Enum)` in `app.models.role`. Endpoints enforce permissions via `@require_permission(PermissionEnum.USERS_READ)`.
+* **Type-Safe RBAC & PermissionEnum**: All fine-grained permission codes are defined in `PermissionEnum(str, Enum)` in `app.models.role`. Endpoints enforce permissions via `current_user: User = Depends(require_permission(PermissionEnum.USERS_READ))`.
 * **ProtectedAPIRouter & Router-Level Auth**: Protected modules instantiate `ProtectedAPIRouter`, enforcing `Depends(get_current_user)` authentication across all endpoints automatically. Unauthenticated endpoints (`/login`, `/refresh`) mount on `public_auth_router`.
 * **Constructor Dependency Injection**: Services receive repository dependencies via constructors. API endpoints inject services directly via `Depends(get_*_service)`.
 * **Repository Pattern**: Data access is isolated within `BaseRepository[ModelType]` and domain repositories.
