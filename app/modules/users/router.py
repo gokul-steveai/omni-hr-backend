@@ -19,7 +19,11 @@ from app.schemas.common import MetaPayload, StandardResponse
 router = APIRouter()
 
 
-@router.get("", response_model=StandardResponse[list[UserResponse]])
+@router.get(
+    "",
+    response_model=StandardResponse[list[UserResponse]],
+    response_model_exclude_none=True,
+)
 async def list_users(
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
@@ -47,6 +51,7 @@ async def list_users(
     "",
     response_model=StandardResponse[UserResponse],
     status_code=status.HTTP_201_CREATED,
+    response_model_exclude_none=True,
 )
 async def create_user(
     payload: UserCreate,
@@ -58,7 +63,11 @@ async def create_user(
     return StandardResponse.ok(data=created_user)
 
 
-@router.get("/me/profile", response_model=StandardResponse[ProfileResponse])
+@router.get(
+    "/me/profile",
+    response_model=StandardResponse[ProfileResponse],
+    response_model_exclude_none=True,
+)
 async def get_my_profile(
     current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
 ):
@@ -67,7 +76,11 @@ async def get_my_profile(
     return StandardResponse.ok(data=profile)
 
 
-@router.put("/me/profile", response_model=StandardResponse[ProfileResponse])
+@router.put(
+    "/me/profile",
+    response_model=StandardResponse[ProfileResponse],
+    response_model_exclude_none=True,
+)
 async def update_my_profile(
     payload: ProfileUpdate,
     current_user: User = Depends(get_current_user),

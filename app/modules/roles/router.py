@@ -25,6 +25,7 @@ permissions_router = APIRouter(prefix="/permissions", tags=["Roles & Permissions
     "",
     response_model=StandardResponse[list[RoleRead]],
     dependencies=[Depends(require_permission("roles:read"))],
+    response_model_exclude_none=True,
 )
 async def list_roles(
     page: int = Query(1, ge=1),
@@ -43,6 +44,7 @@ async def list_roles(
     "",
     response_model=StandardResponse[list[PermissionRead]],
     dependencies=[Depends(require_permission("roles:read"))],
+    response_model_exclude_none=True,
 )
 async def list_permissions(
     page: int = Query(1, ge=1),
@@ -64,6 +66,7 @@ async def list_permissions(
     "/{role_id}/permissions",
     response_model=StandardResponse[list[PermissionRead]],
     dependencies=[Depends(require_permission("roles:read"))],
+    response_model_exclude_none=True,
 )
 async def get_role_permissions(
     role_id: uuid.UUID,
@@ -80,6 +83,7 @@ async def get_role_permissions(
     response_model=PermissionRead,
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(require_permission("roles:write"))],
+    response_model_exclude_none=True,
 )
 async def create_permission(
     perm_in: PermissionCreate,
@@ -94,6 +98,7 @@ async def create_permission(
     response_model=RoleWithPermissionsRead,
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(require_permission("roles:write"))],
+    response_model_exclude_none=True,
 )
 async def create_role(
     role_in: RoleCreate,
@@ -107,6 +112,7 @@ async def create_role(
     "/{role_id}",
     response_model=RoleWithPermissionsRead,
     dependencies=[Depends(require_permission("roles:read"))],
+    response_model_exclude_none=True,
 )
 async def get_role(
     role_id: uuid.UUID,
@@ -120,6 +126,7 @@ async def get_role(
     "/{role_id}",
     response_model=RoleWithPermissionsRead,
     dependencies=[Depends(require_permission("roles:write"))],
+    response_model_exclude_none=True,
 )
 async def update_role(
     role_id: uuid.UUID,
@@ -134,6 +141,7 @@ async def update_role(
     "/{role_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     dependencies=[Depends(require_permission("roles:delete"))],
+    response_model_exclude_none=True,
 )
 async def delete_role(
     role_id: uuid.UUID,

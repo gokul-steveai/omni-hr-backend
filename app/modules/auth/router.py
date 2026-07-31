@@ -36,7 +36,9 @@ async def refresh_access_token(
     return StandardResponse.ok(data=token_response)
 
 
-@router.post("/logout", response_model=StandardResponse[dict])
+@router.post(
+    "/logout", response_model=StandardResponse[dict], response_model_exclude_none=True
+)
 async def logout(
     payload: RefreshTokenRequest,
     current_user: User = Depends(get_current_user),
@@ -47,6 +49,10 @@ async def logout(
     return StandardResponse.ok(data={"message": "Logged out successfully."})
 
 
-@router.get("/me", response_model=StandardResponse[UserResponse])
+@router.get(
+    "/me",
+    response_model=StandardResponse[UserResponse],
+    response_model_exclude_none=True,
+)
 async def get_current_user_profile(current_user: User = Depends(get_current_user)):
     return StandardResponse.ok(data=UserResponse.model_validate(current_user))
