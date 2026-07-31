@@ -4,9 +4,8 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import require_roles
+from app.api.deps import require_permission
 from app.db.session import get_db
-from app.models.user import UserRole
 from app.modules.roles.schemas import (
     PermissionCreate,
     PermissionRead,
@@ -25,7 +24,7 @@ permissions_router = APIRouter(prefix="/permissions", tags=["Roles & Permissions
 @router.get(
     "",
     response_model=StandardResponse[list[RoleRead]],
-    dependencies=[Depends(require_roles([UserRole.SUPER_ADMIN, UserRole.HR_MANAGER]))],
+    dependencies=[Depends(require_permission("roles:read"))],
 )
 async def list_roles(
     page: int = Query(1, ge=1),
@@ -43,7 +42,7 @@ async def list_roles(
 @permissions_router.get(
     "",
     response_model=StandardResponse[list[PermissionRead]],
-    dependencies=[Depends(require_roles([UserRole.SUPER_ADMIN, UserRole.HR_MANAGER]))],
+    dependencies=[Depends(require_permission("roles:read"))],
 )
 async def list_permissions(
     page: int = Query(1, ge=1),
@@ -64,7 +63,7 @@ async def list_permissions(
 @router.get(
     "/{role_id}/permissions",
     response_model=StandardResponse[list[PermissionRead]],
-    dependencies=[Depends(require_roles([UserRole.SUPER_ADMIN, UserRole.HR_MANAGER]))],
+    dependencies=[Depends(require_permission("roles:read"))],
 )
 async def get_role_permissions(
     role_id: uuid.UUID,
@@ -80,7 +79,7 @@ async def get_role_permissions(
     "",
     response_model=PermissionRead,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_roles([UserRole.SUPER_ADMIN]))],
+    dependencies=[Depends(require_permission("roles:write"))],
 )
 async def create_permission(
     perm_in: PermissionCreate,
@@ -94,7 +93,7 @@ async def create_permission(
     "",
     response_model=RoleWithPermissionsRead,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_roles([UserRole.SUPER_ADMIN]))],
+    dependencies=[Depends(require_permission("roles:write"))],
 )
 async def create_role(
     role_in: RoleCreate,
@@ -107,7 +106,7 @@ async def create_role(
 @router.get(
     "/{role_id}",
     response_model=RoleWithPermissionsRead,
-    dependencies=[Depends(require_roles([UserRole.SUPER_ADMIN, UserRole.HR_MANAGER]))],
+    dependencies=[Depends(require_permission("roles:read"))],
 )
 async def get_role(
     role_id: uuid.UUID,
@@ -120,7 +119,7 @@ async def get_role(
 @router.put(
     "/{role_id}",
     response_model=RoleWithPermissionsRead,
-    dependencies=[Depends(require_roles([UserRole.SUPER_ADMIN]))],
+    dependencies=[Depends(require_permission("roles:write"))],
 )
 async def update_role(
     role_id: uuid.UUID,
@@ -134,7 +133,7 @@ async def update_role(
 @router.delete(
     "/{role_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(require_roles([UserRole.SUPER_ADMIN]))],
+    dependencies=[Depends(require_permission("roles:delete"))],
 )
 async def delete_role(
     role_id: uuid.UUID,

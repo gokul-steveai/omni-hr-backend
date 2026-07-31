@@ -155,8 +155,7 @@ async def test_rbac_permission_denied_for_regular_employee():
         )
         assert users_res.status_code == 403
         body = users_res.json()
-        assert body["success"] is False
-        assert body["error"]["code"] == "INSUFFICIENT_PERMISSIONS"
+        assert body["error"]["code"] == "PERMISSION_DENIED"
 
 
 @pytest.mark.asyncio

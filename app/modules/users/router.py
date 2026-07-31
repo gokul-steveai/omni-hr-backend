@@ -4,9 +4,9 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user, require_roles
+from app.api.deps import get_current_user, require_permission
 from app.db.session import get_db
-from app.models.user import User, UserRole
+from app.models.user import User
 from app.modules.users.schemas import (
     ProfileResponse,
     ProfileUpdate,
@@ -27,11 +27,7 @@ async def list_users(
     department_id: Optional[uuid.UUID] = Query(None),
     role_id: Optional[uuid.UUID] = Query(None),
     role_name: Optional[str] = Query(None),
-    current_user: User = Depends(
-        require_roles(
-            [UserRole.SUPER_ADMIN, UserRole.HR_MANAGER, UserRole.DEPARTMENT_LEAD]
-        )
-    ),
+    current_user: User = Depends(require_permission("users:read")),
     db: AsyncSession = Depends(get_db),
 ):
     user_service = UserService(db)
@@ -54,9 +50,7 @@ async def list_users(
 )
 async def create_user(
     payload: UserCreate,
-    current_user: User = Depends(
-        require_roles([UserRole.SUPER_ADMIN, UserRole.HR_MANAGER])
-    ),
+    current_user: User = Depends(require_permission("users:write")),
     db: AsyncSession = Depends(get_db),
 ):
     user_service = UserService(db)

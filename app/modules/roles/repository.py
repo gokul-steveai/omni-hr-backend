@@ -95,7 +95,11 @@ class RoleRepository(BaseRepository[Role]):
         count_query = select(func.count()).select_from(query.subquery())
         total_records = (await self.database_session.execute(count_query)).scalar() or 0
 
-        query = query.order_by(Permission.module.asc(), Permission.code.asc()).offset(offset).limit(limit)
+        query = (
+            query.order_by(Permission.module.asc(), Permission.code.asc())
+            .offset(offset)
+            .limit(limit)
+        )
         perm_records = (await self.database_session.execute(query)).scalars().all()
         return perm_records, total_records
 

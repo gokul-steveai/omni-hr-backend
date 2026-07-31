@@ -186,3 +186,57 @@ async def test_system_role_protection():
         assert del_res.status_code == 400
         err_body = del_res.json()
         assert err_body["error"]["code"] == "SYSTEM_ROLE_PROTECTED"
+
+
+@pytest.mark.asyncio
+async def test_custom_role_permission_enforcement():
+    async with TestingSessionLocal() as session:
+        perm_read_roles = Permission(
+            code="roles:read", module="roles", description="Read roles"
+        )
+        session.add(perm_read_roles)
+        await session.flush()
+
+        custom_role = Role(
+            name="Custom Read Only Auditor",
+            description="Can only read roles",
+            is_system=False,
+            permissions=[perm_read_roles],
+        )
+        session.add(custom_role)
+        await session.flush()
+
+        auditor = User(
+            email="auditor@omnihr.com",
+            password_hash=get_password_hash("AuditorPass123!"),
+            first_name="Auditor",
+            last_name="Custom",
+            role_id=custom_role.id,
+            is_active=True,
+        )
+        session.add(auditor)
+        await session.commit()
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        login_res = await ac.post(
+            "/api/v1/auth/login",
+            json={"email": "auditor@omnihr.com", "password": "AuditorPass123!"},
+        )
+        token = login_res.json()["data"]["access_token"]
+
+        # Should ALLOW roles:read since custom role has roles:read permission
+        res_read = await ac.get(
+            "/api/v1/roles", headers={"Authorization": f"Bearer {token}"}
+        )
+        assert res_read.status_code == 200
+
+        # Should BLOCK roles:write since custom role lacks roles:write permission
+        res_write = await ac.post(
+            "/api/v1/roles",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"name": "Forbidden Role", "permission_ids": []},
+        )
+        assert res_write.status_code == 403
+        assert res_write.json()["error"]["code"] == "PERMISSION_DENIED"
