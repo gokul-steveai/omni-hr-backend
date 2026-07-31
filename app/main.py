@@ -8,6 +8,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api.v1.router import api_router
 from app.core.config import settings
+from app.core.redis import close_redis, init_redis
 from app.db.session import Base, engine
 from app.schemas.common import StandardResponse
 
@@ -17,7 +18,14 @@ async def lifespan(app: FastAPI):
     # Auto-create tables in development mode if not existing
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+    # Initialize Redis connection pool
+    await init_redis()
+
     yield
+
+    # Clean up Redis connection on shutdown
+    await close_redis()
 
 
 app = FastAPI(
