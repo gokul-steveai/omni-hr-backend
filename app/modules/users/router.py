@@ -59,7 +59,7 @@ async def create_user(
     db: AsyncSession = Depends(get_db),
 ):
     user_service = UserService(db)
-    created_user = await user_service.create_user(payload)
+    created_user = await user_service.create_user(payload, current_user)
     return StandardResponse.ok(data=created_user)
 
 

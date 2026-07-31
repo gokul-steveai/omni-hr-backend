@@ -42,7 +42,9 @@ class UserService:
         )
         return [UserResponse.model_validate(u) for u in users], total
 
-    async def create_user(self, payload: UserCreate) -> UserResponse:
+    async def create_user(
+        self, payload: UserCreate, requesting_user: Optional[User] = None
+    ) -> UserResponse:
         existing = await self.user_repo.get_by_email(payload.email)
         if existing:
             raise HTTPException(
@@ -58,6 +60,31 @@ class UserService:
             default_role = await self.role_repo.get_by_name(UserRole.EMPLOYEE.value)
             if default_role:
                 role_id = default_role.id
+        else:
+            target_role = await self.role_repo.get_with_permissions(role_id)
+            if not target_role:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "code": "ROLE_NOT_FOUND",
+                        "message": "Target role for user creation does not exist.",
+                    },
+                )
+            # Enforce actor-aware security policy
+            if target_role.name == UserRole.SUPER_ADMIN.value:
+                requester_role_name = (
+                    requesting_user.role.name
+                    if requesting_user and requesting_user.role
+                    else None
+                )
+                if requester_role_name != UserRole.SUPER_ADMIN.value:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail={
+                            "code": "ROLE_ASSIGNMENT_FORBIDDEN",
+                            "message": "Only Super Administrators can assign the Super Admin role.",
+                        },
+                    )
 
         new_user = User(
             email=payload.email,

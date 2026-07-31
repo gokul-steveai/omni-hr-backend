@@ -2,6 +2,7 @@ import uuid
 from typing import Optional, Sequence
 
 from fastapi import HTTPException, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.role import Permission, Role
@@ -13,6 +14,27 @@ class RoleService:
     def __init__(self, db: AsyncSession):
         self.db = db
         self.role_repo = RoleRepository(db)
+
+    async def _validate_and_get_permissions(
+        self, requested_ids: list[uuid.UUID]
+    ) -> list[Permission]:
+        if not requested_ids:
+            return []
+        unique_ids = set(requested_ids)
+        permissions = list(
+            await self.role_repo.get_permissions_by_ids(list(unique_ids))
+        )
+        if len(permissions) != len(unique_ids):
+            found_ids = {p.id for p in permissions}
+            missing_ids = unique_ids - found_ids
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "code": "INVALID_PERMISSION_IDS",
+                    "message": f"One or more requested permission IDs do not exist: {[str(i) for i in missing_ids]}",
+                },
+            )
+        return permissions
 
     async def list_roles(
         self,
@@ -79,11 +101,7 @@ class RoleService:
                 },
             )
 
-        permissions = []
-        if role_in.permission_ids:
-            permissions = list(
-                await self.role_repo.get_permissions_by_ids(role_in.permission_ids)
-            )
+        permissions = await self._validate_and_get_permissions(role_in.permission_ids)
 
         role = Role(
             name=role_in.name,
@@ -121,8 +139,8 @@ class RoleService:
             role.description = role_in.description
 
         if role_in.permission_ids is not None:
-            permissions = list(
-                await self.role_repo.get_permissions_by_ids(role_in.permission_ids)
+            permissions = await self._validate_and_get_permissions(
+                role_in.permission_ids
             )
             role.permissions = permissions
 
@@ -140,7 +158,7 @@ class RoleService:
                 },
             )
 
-        # Check if users are assigned
+        # Check if users are assigned at service level
         assigned_user_count = await self.role_repo.count_assigned_users(role_id)
         if assigned_user_count > 0:
             raise HTTPException(
@@ -151,4 +169,16 @@ class RoleService:
                 },
             )
 
-        await self.role_repo.delete(role)
+        # Flush delete and handle DB-level constraint violations
+        try:
+            await self.role_repo.delete(role)
+            await self.db.flush()
+        except IntegrityError as exc:
+            await self.db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "code": "ROLE_IN_USE",
+                    "message": "Cannot delete role while users are assigned to it.",
+                },
+            ) from exc

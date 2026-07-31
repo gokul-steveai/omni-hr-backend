@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Any, Generic, Optional, TypeVar
 
 from pydantic import BaseModel
@@ -24,13 +26,13 @@ class StandardResponse(BaseModel, Generic[T]):
     meta: Optional[MetaPayload] = None
 
     @classmethod
-    def ok(cls, data: T, meta: Optional[MetaPayload] = None) -> "StandardResponse[T]":
+    def ok(cls, data: T, meta: Optional[MetaPayload] = None) -> StandardResponse[T]:
         return cls(success=True, data=data, error=None, meta=meta)
 
     @classmethod
     def fail(
         cls, code: str, message: str, details: Optional[dict[str, Any]] = None
-    ) -> "StandardResponse[Any]":
+    ) -> StandardResponse[Any]:
         return cls(
             success=False,
             data=None,

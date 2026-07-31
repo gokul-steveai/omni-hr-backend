@@ -240,3 +240,96 @@ async def test_custom_role_permission_enforcement():
         )
         assert res_write.status_code == 403
         assert res_write.json()["error"]["code"] == "PERMISSION_DENIED"
+
+
+@pytest.mark.asyncio
+async def test_invalid_permission_ids_rejected():
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        login_res = await ac.post(
+            "/api/v1/auth/login",
+            json={"email": "admin@omnihr.com", "password": "AdminPass123!"},
+        )
+        token = login_res.json()["data"]["access_token"]
+
+        fake_uuid = "00000000-0000-0000-0000-000000000000"
+        create_res = await ac.post(
+            "/api/v1/roles",
+            headers={"Authorization": f"Bearer {token}"},
+            json={
+                "name": "Role With Invalid Perms",
+                "permission_ids": [fake_uuid],
+            },
+        )
+        assert create_res.status_code == 400
+        body = create_res.json()
+        assert body["error"]["code"] == "INVALID_PERMISSION_IDS"
+
+
+@pytest.mark.asyncio
+async def test_actor_aware_role_assignment_policy():
+    async with TestingSessionLocal() as session:
+        perm_users_write = Permission(
+            code="users:write", module="users", description="Write users"
+        )
+        session.add(perm_users_write)
+        await session.flush()
+
+        hr_role = Role(
+            name=UserRole.HR_MANAGER.value,
+            description="HR Manager",
+            is_system=True,
+            permissions=[perm_users_write],
+        )
+        session.add(hr_role)
+        await session.flush()
+
+        hr_user = User(
+            email="hr_policy_test@omnihr.com",
+            password_hash=get_password_hash("HrPass123!"),
+            first_name="HR",
+            last_name="Manager",
+            role_id=hr_role.id,
+            is_active=True,
+        )
+        session.add(hr_user)
+        await session.commit()
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        # Get super_admin role ID
+        admin_login = await ac.post(
+            "/api/v1/auth/login",
+            json={"email": "admin@omnihr.com", "password": "AdminPass123!"},
+        )
+        admin_token = admin_login.json()["data"]["access_token"]
+        roles_res = await ac.get(
+            "/api/v1/roles", headers={"Authorization": f"Bearer {admin_token}"}
+        )
+        super_admin_role_id = next(
+            r["id"] for r in roles_res.json()["data"] if r["name"] == "super_admin"
+        )
+
+        # Login as HR Manager
+        hr_login = await ac.post(
+            "/api/v1/auth/login",
+            json={"email": "hr_policy_test@omnihr.com", "password": "HrPass123!"},
+        )
+        hr_token = hr_login.json()["data"]["access_token"]
+
+        # HR Manager attempting to assign Super Admin role to a new user
+        attempt_res = await ac.post(
+            "/api/v1/users",
+            headers={"Authorization": f"Bearer {hr_token}"},
+            json={
+                "email": "hacked_admin@omnihr.com",
+                "password": "HackedPass123!",
+                "first_name": "Hacked",
+                "last_name": "Admin",
+                "role_id": super_admin_role_id,
+            },
+        )
+        assert attempt_res.status_code == 403
+        assert attempt_res.json()["error"]["code"] == "ROLE_ASSIGNMENT_FORBIDDEN"

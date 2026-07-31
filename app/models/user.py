@@ -37,7 +37,7 @@ class User(Base):
 
     role_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("roles.id", ondelete="SET NULL"),
+        ForeignKey("roles.id", ondelete="RESTRICT"),
         nullable=True,
     )
     role: Mapped[Optional["Role"]] = relationship(

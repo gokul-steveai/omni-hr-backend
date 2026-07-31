@@ -2,7 +2,6 @@
 
 ## 1. Enums & Custom Types
 ```sql
-CREATE TYPE user_role AS ENUM ('super_admin', 'hr_manager', 'department_lead', 'employee');
 CREATE TYPE leave_status AS ENUM ('pending', 'approved', 'rejected', 'cancelled');
 CREATE TYPE leave_type_enum AS ENUM ('casual', 'sick', 'earned', 'unpaid');
 CREATE TYPE half_day_type_enum AS ENUM ('none', 'first_half', 'second_half');

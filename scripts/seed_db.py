@@ -246,7 +246,7 @@ async def seed_database():
                     password_hash=get_password_hash(udata["password"]),
                     first_name=udata["first_name"],
                     last_name=udata["last_name"],
-                    role_id=role_map.get(udata["role_name"]),
+                    role_id=role_map[udata["role_name"]],
                     department_id=dept_map.get(udata["dept"]),
                     designation_id=desig_map.get(udata["title"]),
                     is_active=True,
