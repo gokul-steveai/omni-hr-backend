@@ -1,7 +1,7 @@
 import uuid
 from typing import Optional
 
-from fastapi import Depends, Query, status
+from fastapi import Depends, Query, Request, status
 
 from app.api.deps import ProtectedAPIRouter, get_role_service, require_permission
 from app.core.services.cache_service import cache_response, cache_service
@@ -31,6 +31,7 @@ permissions_router = ProtectedAPIRouter(
 )
 @cache_response(ttl_seconds=300, key_prefix="roles_list")
 async def list_roles(
+    request: Request,
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
     search: Optional[str] = Query(None),
@@ -50,6 +51,7 @@ async def list_roles(
 )
 @cache_response(ttl_seconds=300, key_prefix="permissions_list")
 async def list_permissions(
+    request: Request,
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
     search: Optional[str] = Query(None),
@@ -72,6 +74,7 @@ async def list_permissions(
 )
 @cache_response(ttl_seconds=300, key_prefix="role_permissions")
 async def get_role_permissions(
+    request: Request,
     role_id: uuid.UUID,
     role_service: RoleService = Depends(get_role_service),
 ):
@@ -120,6 +123,7 @@ async def create_role(
 )
 @cache_response(ttl_seconds=300, key_prefix="roles")
 async def get_role(
+    request: Request,
     role_id: uuid.UUID,
     role_service: RoleService = Depends(get_role_service),
 ) -> RoleWithPermissionsRead:

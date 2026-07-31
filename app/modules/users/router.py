@@ -1,7 +1,7 @@
 import uuid
 from typing import Optional
 
-from fastapi import Depends, Query, status
+from fastapi import Depends, Query, Request, status
 
 from app.api.deps import (
     ProtectedAPIRouter,
@@ -31,6 +31,7 @@ router = ProtectedAPIRouter()
 )
 @cache_response(ttl_seconds=120, key_prefix="users_list")
 async def list_users(
+    request: Request,
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
     search: Optional[str] = Query(None),
@@ -75,6 +76,7 @@ async def create_user(
 )
 @cache_response(ttl_seconds=120, key_prefix="user_profile")
 async def get_my_profile(
+    request: Request,
     current_user: User = Depends(get_current_user),
     user_service: UserService = Depends(get_user_service),
 ):

@@ -134,15 +134,43 @@ def cache_response(
 
             if request:
                 query_str = str(request.query_params)
-                tenant_id = getattr(getattr(request, "state", None), "tenant_id", None)
+                state = getattr(request, "state", None)
+                tenant_id = getattr(state, "tenant_id", None)
+                user_val = getattr(state, "user_id", None) or getattr(
+                    state, "user", None
+                )
+                user_id = getattr(user_val, "id", user_val) if user_val else None
+
                 tenant_prefix = f":tenant:{tenant_id}" if tenant_id else ""
-                cache_key = f"route_cache:{prefix}{tenant_prefix}:{request.url.path}:{query_str}"
+                user_prefix = f":user:{user_id}" if user_id else ""
+                cache_key = f"route_cache:{prefix}{tenant_prefix}{user_prefix}:{request.url.path}:{query_str}"
             else:
-                # Build cache key from primitive route parameters (UUID, int, str, bool, etc.)
+                # Build cache key from parameters and extract identity from non-primitive objects
                 serializable_params = []
+                has_unidentifiable_object = False
+
                 for k, v in sorted(kwargs.items()):
                     if isinstance(v, (str, int, float, bool, uuid.UUID, type(None))):
                         serializable_params.append(f"{k}={v}")
+                    else:
+                        ident = (
+                            getattr(v, "id", None)
+                            or getattr(v, "user_id", None)
+                            or getattr(v, "tenant_id", None)
+                        )
+                        if ident is not None:
+                            serializable_params.append(f"{k}_id={ident}")
+                        else:
+                            has_unidentifiable_object = True
+
+                # If non-primitive objects with no identity exist and no params resolved, skip caching to avoid leaks
+                if has_unidentifiable_object and not serializable_params:
+                    logger.debug(
+                        "Skipping cache for %s: no identifying context found in arguments",
+                        func.__name__,
+                    )
+                    return await func(*args, **kwargs)
+
                 param_str = "&".join(serializable_params)
                 cache_key = f"route_cache:{prefix}:{func.__module__}.{func.__qualname__}:{param_str}"
 

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 
 from app.api.deps import ProtectedAPIRouter, get_auth_service, get_current_user
 from app.core.services.cache_service import cache_response
@@ -56,5 +56,8 @@ async def logout(
     response_model_exclude_none=True,
 )
 @cache_response(ttl_seconds=120, key_prefix="auth_me")
-async def get_current_user_profile(current_user: User = Depends(get_current_user)):
+async def get_current_user_profile(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+):
     return StandardResponse.ok(data=UserResponse.model_validate(current_user))

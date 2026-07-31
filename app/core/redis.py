@@ -13,8 +13,9 @@ redis_client: Optional[Redis] = None
 async def init_redis() -> Optional[Redis]:
     """Initialize Redis connection pool on application startup."""
     global redis_client
+    client: Optional[Redis] = None
     try:
-        redis_client = from_url(
+        client = from_url(
             settings.REDIS_URL,
             encoding="utf-8",
             decode_responses=True,
@@ -25,15 +26,21 @@ async def init_redis() -> Optional[Redis]:
             retry_on_timeout=True,
         )
         # Test connection ping
-        await redis_client.ping()
-        logger.info("Successfully connected to Redis at %s", settings.REDIS_URL)
+        await client.ping()
+        redis_client = client
+        logger.info("Successfully connected to Redis.")
         return redis_client
     except Exception as e:
+        if client:
+            try:
+                await client.aclose()
+            except Exception as close_err:
+                logger.debug("Error closing failed Redis client: %s", close_err)
+        redis_client = None
         logger.warning(
-            "Redis connection failed (%s). App will continue with fallback/mock caching.",
+            "Redis connection failed (%s). App will continue with fallback caching.",
             e,
         )
-        redis_client = None
         return None
 
 

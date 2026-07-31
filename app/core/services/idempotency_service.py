@@ -12,6 +12,11 @@ logger = logging.getLogger("uvicorn.error")
 
 IDEMPOTENCY_TTL_SECONDS = 86400  # 24 hours
 
+# In-flight lock TTL: set comfortably high (5 minutes) to cover long-running
+# operational workflows (e.g. payroll processing, bulk data imports).
+# If a handler exceeds this TTL, a retried request could acquire a lock.
+IN_FLIGHT_LOCK_TTL_SECONDS = 300
+
 
 class IdempotencyService:
     """Service to handle X-Idempotency-Key caching and request deduplication."""
@@ -64,13 +69,15 @@ class IdempotencyService:
         """Mark idempotency key as in-flight / PROCESSING."""
         client = self.client
         if not client or not idempotency_key:
-            return False
+            return True  # Fail-open if Redis client is unavailable
 
         redis_key = f"idempotency:{path}:{idempotency_key}"
         try:
-            # Set key only if it does not exist (nx=True), expire in 60s while processing
+            # Set key only if it does not exist (nx=True), expire in IN_FLIGHT_LOCK_TTL_SECONDS
             payload = json.dumps({"status": "PROCESSING"})
-            is_new = await client.set(redis_key, payload, ex=60, nx=True)
+            is_new = await client.set(
+                redis_key, payload, ex=IN_FLIGHT_LOCK_TTL_SECONDS, nx=True
+            )
             return bool(is_new)
         except Exception as e:
             logger.warning(
