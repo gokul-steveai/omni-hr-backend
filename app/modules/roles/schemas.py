@@ -15,6 +15,12 @@ class PermissionRead(BaseModel):
     created_at: datetime
 
 
+class PermissionCreate(BaseModel):
+    code: str = Field(..., min_length=2, max_length=100)
+    module: str = Field(..., min_length=2, max_length=50)
+    description: Optional[str] = Field(None, max_length=255)
+
+
 class RoleRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

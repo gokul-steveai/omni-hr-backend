@@ -43,6 +43,17 @@ class RoleRepository(BaseRepository[Role]):
         )
         return query_result.scalars().all()
 
+    async def get_permission_by_code(self, code: str) -> Optional[Permission]:
+        query_result = await self.database_session.execute(
+            select(Permission).where(Permission.code == code)
+        )
+        return query_result.scalar_one_or_none()
+
+    async def create_permission(self, permission: Permission) -> Permission:
+        self.database_session.add(permission)
+        await self.database_session.flush()
+        return permission
+
     async def count_assigned_users(self, role_id: uuid.UUID) -> int:
         from sqlalchemy import func
 

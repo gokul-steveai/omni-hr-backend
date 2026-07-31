@@ -8,6 +8,7 @@ from app.api.deps import require_roles
 from app.db.session import get_db
 from app.models.user import UserRole
 from app.modules.roles.schemas import (
+    PermissionCreate,
     PermissionRead,
     RoleCreate,
     RoleUpdate,
@@ -41,6 +42,20 @@ async def list_permissions(
 ) -> Sequence[PermissionRead]:
     service = RoleService(db)
     return await service.list_permissions()
+
+
+@permissions_router.post(
+    "",
+    response_model=PermissionRead,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_roles([UserRole.SUPER_ADMIN]))],
+)
+async def create_permission(
+    perm_in: PermissionCreate,
+    db: AsyncSession = Depends(get_db),
+) -> PermissionRead:
+    service = RoleService(db)
+    return await service.create_permission(perm_in)
 
 
 @router.post(

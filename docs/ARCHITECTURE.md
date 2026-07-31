@@ -27,7 +27,11 @@ backend/
 * **Unit of Work (UOW)**: Transaction management is encapsulated inside `async with UnitOfWork(database_session) as unit_of_work:` context managers.
 * **Repository Pattern**: Data access is isolated within `BaseRepository[ModelType]` and domain repositories.
 * **Service-Repository Decoupling**: API routers delegate 100% of business logic to domain services.
-* **Role-Bounded Security**: Public registration strictly assigns the `EMPLOYEE` role. Elevated roles are provisioned by Admins via `POST /api/v1/users`.
+* **Dynamic RBAC & Fine-Grained Permissions**:
+  - Roles and permissions are stored dynamically in relational tables (`roles`, `permissions`, `role_permissions`).
+  - New permissions are registered via seed scripts or `POST /api/v1/permissions` API endpoints without requiring DDL database schema migrations.
+  - Endpoints enforce authorization via `@require_permission("code")` or `@require_roles([...])` dependencies.
+* **Role-Bounded Security**: Public registration strictly assigns default `EMPLOYEE` system role. Elevated or custom roles are provisioned by Admins.
 
 ---
 

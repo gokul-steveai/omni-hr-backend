@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.role import Permission, Role
 from app.modules.roles.repository import RoleRepository
-from app.modules.roles.schemas import RoleCreate, RoleUpdate
+from app.modules.roles.schemas import PermissionCreate, RoleCreate, RoleUpdate
 
 
 class RoleService:
@@ -19,6 +19,24 @@ class RoleService:
 
     async def list_permissions(self) -> Sequence[Permission]:
         return await self.role_repo.list_permissions()
+
+    async def create_permission(self, perm_in: "PermissionCreate") -> Permission:
+        existing = await self.role_repo.get_permission_by_code(perm_in.code)
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "code": "PERMISSION_ALREADY_EXISTS",
+                    "message": f"Permission code '{perm_in.code}' already exists.",
+                },
+            )
+
+        perm = Permission(
+            code=perm_in.code,
+            module=perm_in.module,
+            description=perm_in.description,
+        )
+        return await self.role_repo.create_permission(perm)
 
     async def get_role(self, role_id: uuid.UUID) -> Role:
         role = await self.role_repo.get_with_permissions(role_id)
