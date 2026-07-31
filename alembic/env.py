@@ -5,21 +5,10 @@ from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
+import app.models  # noqa: F401
 from alembic import context
 from app.core.config import settings
 from app.db.session import Base
-from app.models.audit import AuditLog  # noqa: F401
-from app.models.holiday import CompanyHoliday  # noqa: F401
-from app.models.leave import (  # noqa: F401
-    LeaveAllocation,
-    LeaveApproval,
-    LeaveRequest,
-    LeaveType,
-)
-from app.models.organization import Department, Designation  # noqa: F401
-from app.models.payroll import PayRun, Payslip, SalaryStructure  # noqa: F401
-from app.models.timesheet import Project, TimesheetEntry  # noqa: F401
-from app.models.user import EmployeeProfile, RefreshToken, User  # noqa: F401
 
 config = context.config
 

@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import get_password_hash
 from app.models.user import EmployeeProfile, User, UserRole
+from app.modules.roles.repository import RoleRepository
 from app.modules.users.repository import UserRepository
 from app.modules.users.schemas import (
     ProfileResponse,
@@ -19,6 +20,7 @@ class UserService:
     def __init__(self, db: AsyncSession):
         self.db = db
         self.user_repo = UserRepository(db)
+        self.role_repo = RoleRepository(db)
 
     async def list_users(
         self,
@@ -26,7 +28,8 @@ class UserService:
         limit: int = 20,
         search: Optional[str] = None,
         department_id: Optional[uuid.UUID] = None,
-        role: Optional[UserRole] = None,
+        role_id: Optional[uuid.UUID] = None,
+        role_name: Optional[str] = None,
     ) -> tuple[list[UserResponse], int]:
         offset = (page - 1) * limit
         users, total = await self.user_repo.search_users(
@@ -34,11 +37,14 @@ class UserService:
             limit=limit,
             search_term=search,
             department_id=department_id,
-            role=role,
+            role_id=role_id,
+            role_name=role_name,
         )
         return [UserResponse.model_validate(u) for u in users], total
 
-    async def create_user(self, payload: UserCreate) -> UserResponse:
+    async def create_user(
+        self, payload: UserCreate, requesting_user: Optional[User] = None
+    ) -> UserResponse:
         existing = await self.user_repo.get_by_email(payload.email)
         if existing:
             raise HTTPException(
@@ -49,12 +55,43 @@ class UserService:
                 },
             )
 
+        role_id = payload.role_id
+        if not role_id:
+            default_role = await self.role_repo.get_by_name(UserRole.EMPLOYEE.value)
+            if default_role:
+                role_id = default_role.id
+        else:
+            target_role = await self.role_repo.get_with_permissions(role_id)
+            if not target_role:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "code": "ROLE_NOT_FOUND",
+                        "message": "Target role for user creation does not exist.",
+                    },
+                )
+            # Enforce actor-aware security policy
+            if target_role.name == UserRole.SUPER_ADMIN.value:
+                requester_role_name = (
+                    requesting_user.role.name
+                    if requesting_user and requesting_user.role
+                    else None
+                )
+                if requester_role_name != UserRole.SUPER_ADMIN.value:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail={
+                            "code": "ROLE_ASSIGNMENT_FORBIDDEN",
+                            "message": "Only Super Administrators can assign the Super Admin role.",
+                        },
+                    )
+
         new_user = User(
             email=payload.email,
             password_hash=get_password_hash(payload.password),
             first_name=payload.first_name,
             last_name=payload.last_name,
-            role=payload.role,
+            role_id=role_id,
             department_id=payload.department_id,
             designation_id=payload.designation_id,
             manager_id=payload.manager_id,

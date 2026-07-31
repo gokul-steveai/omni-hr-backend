@@ -9,6 +9,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.api.v1.router import api_router
 from app.core.config import settings
 from app.db.session import Base, engine
+from app.schemas.common import StandardResponse
 
 
 @asynccontextmanager
@@ -53,12 +54,9 @@ async def custom_http_exception_handler(request: Request, exc: StarletteHTTPExce
 
     return JSONResponse(
         status_code=exc.status_code,
-        content={
-            "success": False,
-            "data": None,
-            "error": {"code": code, "message": message, "details": details_extra},
-            "meta": None,
-        },
+        content=StandardResponse.fail(
+            code=code, message=message, details=details_extra
+        ).model_dump(mode="json", exclude_none=True),
     )
 
 
@@ -66,25 +64,19 @@ async def custom_http_exception_handler(request: Request, exc: StarletteHTTPExce
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        content={
-            "success": False,
-            "data": None,
-            "error": {
-                "code": "VALIDATION_ERROR",
-                "message": "Request payload or parameters failed validation.",
-                "details": {"errors": exc.errors()},
-            },
-            "meta": None,
-        },
+        content=StandardResponse.fail(
+            code="VALIDATION_ERROR",
+            message="Request payload or parameters failed validation.",
+            details={"errors": exc.errors()},
+        ).model_dump(mode="json", exclude_none=True),
     )
 
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
 
-@app.get("/")
+@app.get("/", response_model_exclude_none=True)
 async def root():
-    return {
-        "success": True,
-        "data": {"name": settings.PROJECT_NAME, "version": "1.0.0", "docs": "/docs"},
-    }
+    return StandardResponse.ok(
+        data={"name": settings.PROJECT_NAME, "version": "1.0.0", "docs": "/docs"}
+    )

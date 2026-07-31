@@ -11,6 +11,7 @@ from app.core.security import get_password_hash
 from app.db.session import AsyncSessionLocal, Base, engine
 from app.models.leave import LeaveType, LeaveTypeEnum
 from app.models.organization import Department, Designation
+from app.models.role import Permission, Role
 from app.models.user import EmployeeProfile, User, UserRole
 
 
@@ -81,6 +82,118 @@ async def seed_database():
 
         await session.flush()
 
+        print("Seeding Permissions Catalog & System Roles...")
+        permissions_data = [
+            # Users
+            ("users:read", "users", "View user accounts and profiles"),
+            ("users:write", "users", "Create and edit user accounts"),
+            ("users:delete", "users", "Delete user accounts"),
+            # Roles & Permissions
+            ("roles:read", "roles", "View roles and permissions catalog"),
+            ("roles:write", "roles", "Create and modify custom roles"),
+            ("roles:delete", "roles", "Delete custom roles"),
+            # Leave
+            ("leave:apply", "leave", "Apply for leave"),
+            ("leave:read", "leave", "View leave requests"),
+            ("leave:approve", "leave", "Approve or reject leave requests"),
+            ("leave:manage_types", "leave", "Create and manage leave types"),
+            # Payroll
+            ("payroll:read", "payroll", "View payslips and salary structures"),
+            ("payroll:process", "payroll", "Process pay runs and salary structures"),
+            # Timesheets
+            ("timesheet:submit", "timesheet", "Submit timesheet entries"),
+            ("timesheet:approve", "timesheet", "Approve timesheet entries"),
+            # Audit
+            ("audit:read", "audit", "View system audit logs"),
+        ]
+
+        perm_map = {}
+        for code, module, desc in permissions_data:
+            res = await session.execute(
+                select(Permission).where(Permission.code == code)
+            )
+            perm = res.scalar_one_or_none()
+            if not perm:
+                perm = Permission(code=code, module=module, description=desc)
+                session.add(perm)
+                await session.flush()
+            perm_map[code] = perm
+
+        # System Roles
+        roles_data = [
+            (
+                UserRole.SUPER_ADMIN.value,
+                "Super Administrator with unrestricted access",
+                True,
+                list(perm_map.values()),
+            ),
+            (
+                UserRole.HR_MANAGER.value,
+                "HR Manager with employee, leave, and payroll management access",
+                True,
+                [
+                    perm_map[c]
+                    for c in [
+                        "users:read",
+                        "users:write",
+                        "roles:read",
+                        "leave:read",
+                        "leave:approve",
+                        "leave:manage_types",
+                        "payroll:read",
+                        "payroll:process",
+                        "timesheet:approve",
+                        "audit:read",
+                    ]
+                ],
+            ),
+            (
+                UserRole.DEPARTMENT_LEAD.value,
+                "Department Lead with team approval access",
+                True,
+                [
+                    perm_map[c]
+                    for c in [
+                        "users:read",
+                        "leave:apply",
+                        "leave:read",
+                        "leave:approve",
+                        "timesheet:submit",
+                        "timesheet:approve",
+                    ]
+                ],
+            ),
+            (
+                UserRole.EMPLOYEE.value,
+                "Standard Employee access",
+                True,
+                [
+                    perm_map[c]
+                    for c in [
+                        "leave:apply",
+                        "leave:read",
+                        "timesheet:submit",
+                        "payroll:read",
+                    ]
+                ],
+            ),
+        ]
+
+        role_map = {}
+        for r_name, r_desc, r_system, r_perms in roles_data:
+            res = await session.execute(select(Role).where(Role.name == r_name))
+            role = res.scalar_one_or_none()
+            if not role:
+                role = Role(
+                    name=r_name,
+                    description=r_desc,
+                    is_system=r_system,
+                    permissions=r_perms,
+                )
+                session.add(role)
+                await session.flush()
+            role_map[r_name] = role.id
+
         print("Seeding Test User Accounts...")
         users_to_seed = [
             {
@@ -88,7 +201,7 @@ async def seed_database():
                 "password": "AdminPass123!",
                 "first_name": "Super",
                 "last_name": "Admin",
-                "role": UserRole.SUPER_ADMIN,
+                "role_name": UserRole.SUPER_ADMIN.value,
                 "dept": "Engineering",
                 "title": "Senior Software Engineer",
             },
@@ -97,7 +210,7 @@ async def seed_database():
                 "password": "HrPass123!",
                 "first_name": "Sarah",
                 "last_name": "Jenkins",
-                "role": UserRole.HR_MANAGER,
+                "role_name": UserRole.HR_MANAGER.value,
                 "dept": "Human Resources",
                 "title": "HR Specialist",
             },
@@ -106,7 +219,7 @@ async def seed_database():
                 "password": "LeadPass123!",
                 "first_name": "Michael",
                 "last_name": "Scott",
-                "role": UserRole.DEPARTMENT_LEAD,
+                "role_name": UserRole.DEPARTMENT_LEAD.value,
                 "dept": "Engineering",
                 "title": "Senior Software Engineer",
             },
@@ -115,7 +228,7 @@ async def seed_database():
                 "password": "EmpPass123!",
                 "first_name": "Jim",
                 "last_name": "Halpert",
-                "role": UserRole.EMPLOYEE,
+                "role_name": UserRole.EMPLOYEE.value,
                 "dept": "Engineering",
                 "title": "Senior Software Engineer",
             },
@@ -133,7 +246,7 @@ async def seed_database():
                     password_hash=get_password_hash(udata["password"]),
                     first_name=udata["first_name"],
                     last_name=udata["last_name"],
-                    role=udata["role"],
+                    role_id=role_map[udata["role_name"]],
                     department_id=dept_map.get(udata["dept"]),
                     designation_id=desig_map.get(udata["title"]),
                     is_active=True,

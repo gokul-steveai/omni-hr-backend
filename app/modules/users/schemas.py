@@ -4,7 +4,7 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, EmailStr
 
-from app.models.user import UserRole
+from app.modules.roles.schemas import RoleWithPermissionsRead
 
 
 class DepartmentBase(BaseModel):
@@ -46,7 +46,8 @@ class UserResponse(BaseModel):
     email: EmailStr
     first_name: str
     last_name: str
-    role: UserRole
+    role_id: Optional[uuid.UUID] = None
+    role: Optional[RoleWithPermissionsRead] = None
     is_active: bool
     department: Optional[DepartmentBase] = None
     designation: Optional[DesignationBase] = None
@@ -61,7 +62,17 @@ class UserCreate(BaseModel):
     password: str
     first_name: str
     last_name: str
-    role: UserRole = UserRole.EMPLOYEE
+    role_id: Optional[uuid.UUID] = None
     department_id: Optional[uuid.UUID] = None
     designation_id: Optional[uuid.UUID] = None
     manager_id: Optional[uuid.UUID] = None
+
+
+class UserUpdate(BaseModel):
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    role_id: Optional[uuid.UUID] = None
+    department_id: Optional[uuid.UUID] = None
+    designation_id: Optional[uuid.UUID] = None
+    manager_id: Optional[uuid.UUID] = None
+    is_active: Optional[bool] = None

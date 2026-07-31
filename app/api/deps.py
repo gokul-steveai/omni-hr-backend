@@ -70,11 +70,16 @@ async def get_current_user(
     return user
 
 
-def require_roles(allowed_roles: list[UserRole]) -> Callable:
+def require_roles(allowed_roles: list[UserRole | str]) -> Callable:
     async def role_checker(current_user: User = Depends(get_current_user)) -> User:
+        allowed_names = [
+            r.value if isinstance(r, UserRole) else str(r) for r in allowed_roles
+        ]
+        user_role_name = current_user.role.name if current_user.role else None
+
         if (
-            current_user.role not in allowed_roles
-            and current_user.role != UserRole.SUPER_ADMIN
+            user_role_name not in allowed_names
+            and user_role_name != UserRole.SUPER_ADMIN.value
         ):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -86,3 +91,32 @@ def require_roles(allowed_roles: list[UserRole]) -> Callable:
         return current_user
 
     return role_checker
+
+
+def require_permission(permission_code: str) -> Callable:
+    async def permission_checker(
+        current_user: User = Depends(get_current_user),
+    ) -> User:
+        user_role_name = current_user.role.name if current_user.role else None
+
+        # Super admin always has full permissions
+        if user_role_name == UserRole.SUPER_ADMIN.value:
+            return current_user
+
+        user_permissions = (
+            [p.code for p in current_user.role.permissions]
+            if current_user.role and current_user.role.permissions
+            else []
+        )
+
+        if permission_code not in user_permissions:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "code": "PERMISSION_DENIED",
+                    "message": f"Required permission '{permission_code}' is missing.",
+                },
+            )
+        return current_user
+
+    return permission_checker

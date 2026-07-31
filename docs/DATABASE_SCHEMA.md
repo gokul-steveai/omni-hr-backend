@@ -2,7 +2,6 @@
 
 ## 1. Enums & Custom Types
 ```sql
-CREATE TYPE user_role AS ENUM ('super_admin', 'hr_manager', 'department_lead', 'employee');
 CREATE TYPE leave_status AS ENUM ('pending', 'approved', 'rejected', 'cancelled');
 CREATE TYPE leave_type_enum AS ENUM ('casual', 'sick', 'earned', 'unpaid');
 CREATE TYPE half_day_type_enum AS ENUM ('none', 'first_half', 'second_half');
@@ -25,13 +24,36 @@ CREATE TABLE designations (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+CREATE TABLE roles (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(100) NOT NULL UNIQUE,
+    description VARCHAR(255),
+    is_system BOOLEAN DEFAULT FALSE NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE permissions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    code VARCHAR(100) NOT NULL UNIQUE,
+    module VARCHAR(50) NOT NULL,
+    description VARCHAR(255),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE role_permissions (
+    role_id UUID REFERENCES roles(id) ON DELETE CASCADE,
+    permission_id UUID REFERENCES permissions(id) ON DELETE CASCADE,
+    PRIMARY KEY (role_id, permission_id)
+);
+
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
-    role user_role DEFAULT 'employee' NOT NULL,
+    role_id UUID REFERENCES roles(id) ON DELETE SET NULL,
     department_id UUID REFERENCES departments(id) ON DELETE SET NULL,
     designation_id UUID REFERENCES designations(id) ON DELETE SET NULL,
     manager_id UUID REFERENCES users(id) ON DELETE SET NULL,

@@ -5,7 +5,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.models.user import EmployeeProfile, RefreshToken, User, UserRole
+from app.models.user import EmployeeProfile, RefreshToken, User
 from app.repositories.base import BaseRepository
 
 
@@ -20,6 +20,7 @@ class UserRepository(BaseRepository[User]):
                 selectinload(User.department),
                 selectinload(User.designation),
                 selectinload(User.profile),
+                selectinload(User.role),
             )
             .where(User.email == email_address)
         )
@@ -32,6 +33,7 @@ class UserRepository(BaseRepository[User]):
                 selectinload(User.department),
                 selectinload(User.designation),
                 selectinload(User.profile),
+                selectinload(User.role),
             )
             .where(User.id == user_id)
         )
@@ -43,18 +45,24 @@ class UserRepository(BaseRepository[User]):
         limit: int = 20,
         search_term: Optional[str] = None,
         department_id: Optional[uuid.UUID] = None,
-        role: Optional[UserRole] = None,
+        role_id: Optional[uuid.UUID] = None,
+        role_name: Optional[str] = None,
     ) -> tuple[Sequence[User], int]:
         query = select(User).options(
             selectinload(User.department),
             selectinload(User.designation),
             selectinload(User.profile),
+            selectinload(User.role),
         )
 
         if department_id:
             query = query.where(User.department_id == department_id)
-        if role:
-            query = query.where(User.role == role)
+        if role_id:
+            query = query.where(User.role_id == role_id)
+        elif role_name:
+            from app.models.role import Role
+
+            query = query.join(User.role).where(Role.name == role_name)
         if search_term:
             search_pattern = f"%{search_term}%"
             query = query.where(

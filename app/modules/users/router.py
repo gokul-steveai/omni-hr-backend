@@ -4,9 +4,9 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user, require_roles
+from app.api.deps import get_current_user, require_permission
 from app.db.session import get_db
-from app.models.user import User, UserRole
+from app.models.user import User
 from app.modules.users.schemas import (
     ProfileResponse,
     ProfileUpdate,
@@ -19,23 +19,29 @@ from app.schemas.common import MetaPayload, StandardResponse
 router = APIRouter()
 
 
-@router.get("", response_model=StandardResponse[list[UserResponse]])
+@router.get(
+    "",
+    response_model=StandardResponse[list[UserResponse]],
+    response_model_exclude_none=True,
+)
 async def list_users(
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
     search: Optional[str] = Query(None),
     department_id: Optional[uuid.UUID] = Query(None),
-    role: Optional[UserRole] = Query(None),
-    current_user: User = Depends(
-        require_roles(
-            [UserRole.SUPER_ADMIN, UserRole.HR_MANAGER, UserRole.DEPARTMENT_LEAD]
-        )
-    ),
+    role_id: Optional[uuid.UUID] = Query(None),
+    role_name: Optional[str] = Query(None),
+    current_user: User = Depends(require_permission("users:read")),
     db: AsyncSession = Depends(get_db),
 ):
     user_service = UserService(db)
     user_list, total = await user_service.list_users(
-        page=page, limit=limit, search=search, department_id=department_id, role=role
+        page=page,
+        limit=limit,
+        search=search,
+        department_id=department_id,
+        role_id=role_id,
+        role_name=role_name,
     )
     meta = MetaPayload(page=page, limit=limit, total=total)
     return StandardResponse.ok(data=user_list, meta=meta)
@@ -45,20 +51,23 @@ async def list_users(
     "",
     response_model=StandardResponse[UserResponse],
     status_code=status.HTTP_201_CREATED,
+    response_model_exclude_none=True,
 )
 async def create_user(
     payload: UserCreate,
-    current_user: User = Depends(
-        require_roles([UserRole.SUPER_ADMIN, UserRole.HR_MANAGER])
-    ),
+    current_user: User = Depends(require_permission("users:write")),
     db: AsyncSession = Depends(get_db),
 ):
     user_service = UserService(db)
-    created_user = await user_service.create_user(payload)
+    created_user = await user_service.create_user(payload, current_user)
     return StandardResponse.ok(data=created_user)
 
 
-@router.get("/me/profile", response_model=StandardResponse[ProfileResponse])
+@router.get(
+    "/me/profile",
+    response_model=StandardResponse[ProfileResponse],
+    response_model_exclude_none=True,
+)
 async def get_my_profile(
     current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
 ):
@@ -67,7 +76,11 @@ async def get_my_profile(
     return StandardResponse.ok(data=profile)
 
 
-@router.put("/me/profile", response_model=StandardResponse[ProfileResponse])
+@router.put(
+    "/me/profile",
+    response_model=StandardResponse[ProfileResponse],
+    response_model_exclude_none=True,
+)
 async def update_my_profile(
     payload: ProfileUpdate,
     current_user: User = Depends(get_current_user),
