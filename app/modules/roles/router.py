@@ -1,9 +1,10 @@
 import uuid
 from typing import Optional
 
-from fastapi import Depends, Query, status
+from fastapi import Depends, Query, Request, status
 
 from app.api.deps import ProtectedAPIRouter, get_role_service, require_permission
+from app.core.services.cache_service import cache_response, cache_service
 from app.models.role import PermissionEnum
 from app.modules.roles.schemas import (
     PermissionCreate,
@@ -28,7 +29,9 @@ permissions_router = ProtectedAPIRouter(
     dependencies=[Depends(require_permission(PermissionEnum.ROLES_READ))],
     response_model_exclude_none=True,
 )
+@cache_response(ttl_seconds=300, key_prefix="roles_list")
 async def list_roles(
+    request: Request,
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
     search: Optional[str] = Query(None),
@@ -46,7 +49,9 @@ async def list_roles(
     dependencies=[Depends(require_permission(PermissionEnum.ROLES_READ))],
     response_model_exclude_none=True,
 )
+@cache_response(ttl_seconds=300, key_prefix="permissions_list")
 async def list_permissions(
+    request: Request,
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
     search: Optional[str] = Query(None),
@@ -67,7 +72,9 @@ async def list_permissions(
     dependencies=[Depends(require_permission(PermissionEnum.ROLES_READ))],
     response_model_exclude_none=True,
 )
+@cache_response(ttl_seconds=300, key_prefix="role_permissions")
 async def get_role_permissions(
+    request: Request,
     role_id: uuid.UUID,
     role_service: RoleService = Depends(get_role_service),
 ):
@@ -88,6 +95,7 @@ async def create_permission(
     role_service: RoleService = Depends(get_role_service),
 ) -> PermissionRead:
     created_permission = await role_service.create_permission(perm_in)
+    await cache_service.invalidate_prefix("permissions")
     return PermissionRead.model_validate(created_permission)
 
 
@@ -103,6 +111,7 @@ async def create_role(
     role_service: RoleService = Depends(get_role_service),
 ) -> RoleWithPermissionsRead:
     created_role = await role_service.create_role(role_in)
+    await cache_service.invalidate_prefix("roles")
     return RoleWithPermissionsRead.model_validate(created_role)
 
 
@@ -112,7 +121,9 @@ async def create_role(
     dependencies=[Depends(require_permission(PermissionEnum.ROLES_READ))],
     response_model_exclude_none=True,
 )
+@cache_response(ttl_seconds=300, key_prefix="roles")
 async def get_role(
+    request: Request,
     role_id: uuid.UUID,
     role_service: RoleService = Depends(get_role_service),
 ) -> RoleWithPermissionsRead:
@@ -132,6 +143,7 @@ async def update_role(
     role_service: RoleService = Depends(get_role_service),
 ) -> RoleWithPermissionsRead:
     updated_role = await role_service.update_role(role_id, role_in)
+    await cache_service.invalidate_prefix("roles")
     return RoleWithPermissionsRead.model_validate(updated_role)
 
 
@@ -146,3 +158,4 @@ async def delete_role(
     role_service: RoleService = Depends(get_role_service),
 ) -> None:
     await role_service.delete_role(role_id)
+    await cache_service.invalidate_prefix("roles")

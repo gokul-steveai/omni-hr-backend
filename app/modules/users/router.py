@@ -1,7 +1,7 @@
 import uuid
 from typing import Optional
 
-from fastapi import Depends, Query, status
+from fastapi import Depends, Query, Request, status
 
 from app.api.deps import (
     ProtectedAPIRouter,
@@ -9,6 +9,7 @@ from app.api.deps import (
     get_user_service,
     require_permission,
 )
+from app.core.services.cache_service import cache_response, cache_service
 from app.models.role import PermissionEnum
 from app.models.user import User
 from app.modules.users.schemas import (
@@ -28,7 +29,9 @@ router = ProtectedAPIRouter()
     response_model=StandardResponse[list[UserResponse]],
     response_model_exclude_none=True,
 )
+@cache_response(ttl_seconds=120, key_prefix="users_list")
 async def list_users(
+    request: Request,
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
     search: Optional[str] = Query(None),
@@ -62,6 +65,7 @@ async def create_user(
     user_service: UserService = Depends(get_user_service),
 ):
     created_user = await user_service.create_user(payload, current_user)
+    await cache_service.invalidate_prefix("users")
     return StandardResponse.ok(data=created_user)
 
 
@@ -70,7 +74,9 @@ async def create_user(
     response_model=StandardResponse[ProfileResponse],
     response_model_exclude_none=True,
 )
+@cache_response(ttl_seconds=120, key_prefix="user_profile")
 async def get_my_profile(
+    request: Request,
     current_user: User = Depends(get_current_user),
     user_service: UserService = Depends(get_user_service),
 ):
@@ -89,4 +95,6 @@ async def update_my_profile(
     user_service: UserService = Depends(get_user_service),
 ):
     updated_profile = await user_service.update_profile(current_user.id, payload)
+    await cache_service.invalidate_prefix("user_profile")
+    await cache_service.invalidate_prefix("auth_me")
     return StandardResponse.ok(data=updated_profile)

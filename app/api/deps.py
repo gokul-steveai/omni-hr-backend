@@ -6,6 +6,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.services.cache_service import cache_service
+from app.core.services.idempotency_service import (
+    check_idempotency,
+    idempotency_service,
+)
 from app.core.services.token_service import TokenService
 from app.db.session import get_db
 from app.models.role import PermissionEnum
@@ -15,6 +20,22 @@ from app.modules.roles.repository import RoleRepository
 from app.modules.roles.service import RoleService
 from app.modules.users.repository import UserRepository
 from app.modules.users.service import UserService
+
+__all__ = [
+    "get_db",
+    "cache_service",
+    "idempotency_service",
+    "check_idempotency",
+    "get_user_repository",
+    "get_role_repository",
+    "get_auth_service",
+    "get_user_service",
+    "get_role_service",
+    "get_current_user",
+    "require_roles",
+    "require_permission",
+    "ProtectedAPIRouter",
+]
 
 security_scheme = HTTPBearer()
 
