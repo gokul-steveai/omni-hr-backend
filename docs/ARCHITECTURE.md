@@ -10,9 +10,10 @@ FastAPI backend application utilizing Async SQLAlchemy 2.0, Pydantic v2, and `uv
 backend/
 ├── app/
 │   ├── modules/                        # Feature-Driven Domain Modules (auth, users, leaves, payroll)
-│   │   ├── auth/                       # Router, AuthService, Schemas
-│   │   └── users/                      # Router, UserService, UserRepository, Schemas
-│   ├── db/                             # Engine, SessionMaker, UnitOfWork
+│   │   ├── auth/                       # Public & Protected Routers, AuthService, Schemas
+│   │   └── users/                      # ProtectedAPIRouter, UserService, UserRepository, Schemas
+│   ├── db/                             # Engine, SessionMaker
+│   ├── api/                            # Common Dependencies & ProtectedAPIRouter (deps.py)
 │   ├── core/                           # Config, PasswordService, TokenService
 │   ├── repositories/                   # BaseRepository[ModelType]
 │   └── models/                         # SQLAlchemy 2.0 ORM Entity Blueprints
@@ -24,14 +25,13 @@ backend/
 
 ## 2. Architectural Patterns
 
-* **Unit of Work (UOW)**: Transaction management is encapsulated inside `async with UnitOfWork(database_session) as unit_of_work:` context managers.
+* **ProtectedAPIRouter & Router-Level Auth**: Protected modules instantiate `ProtectedAPIRouter`, enforcing `Depends(get_current_user)` authentication across all endpoints automatically. Unauthenticated endpoints (`/login`, `/refresh`) mount on `public_auth_router`.
+* **Constructor Dependency Injection**: Services receive repository dependencies via constructors. API endpoints inject services directly via `Depends(get_*_service)`.
 * **Repository Pattern**: Data access is isolated within `BaseRepository[ModelType]` and domain repositories.
 * **Service-Repository Decoupling**: API routers delegate 100% of business logic to domain services.
 * **Dynamic RBAC & Fine-Grained Permissions**:
   - Roles and permissions are stored dynamically in relational tables (`roles`, `permissions`, `role_permissions`).
-  - New permissions are registered via seed scripts or `POST /api/v1/permissions` API endpoints without requiring DDL database schema migrations.
-  - Endpoints enforce authorization via `@require_permission("code")` or `@require_roles([...])` dependencies.
-* **Role-Bounded Security**: Public registration strictly assigns default `EMPLOYEE` system role. Elevated or custom roles are provisioned by Admins.
+  - Endpoints enforce granular permission checks via `@require_permission("code")` dependencies.
 
 ---
 

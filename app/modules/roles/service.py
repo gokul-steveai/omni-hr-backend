@@ -11,9 +11,13 @@ from app.modules.roles.schemas import PermissionCreate, RoleCreate, RoleUpdate
 
 
 class RoleService:
-    def __init__(self, db: AsyncSession):
-        self.db = db
-        self.role_repo = RoleRepository(db)
+    def __init__(
+        self,
+        database_session: AsyncSession,
+        role_repository: RoleRepository,
+    ):
+        self._database_session = database_session
+        self._role_repo = role_repository
 
     async def _validate_and_get_permissions(
         self, requested_ids: list[uuid.UUID]
@@ -22,7 +26,7 @@ class RoleService:
             return []
         unique_ids = set(requested_ids)
         permissions = list(
-            await self.role_repo.get_permissions_by_ids(list(unique_ids))
+            await self._role_repo.get_permissions_by_ids(list(unique_ids))
         )
         if len(permissions) != len(unique_ids):
             found_ids = {p.id for p in permissions}
@@ -43,7 +47,7 @@ class RoleService:
         search: Optional[str] = None,
     ) -> tuple[Sequence[Role], int]:
         offset = (page - 1) * limit
-        return await self.role_repo.search_roles(
+        return await self._role_repo.search_roles(
             offset=offset, limit=limit, search_term=search
         )
 
@@ -55,7 +59,7 @@ class RoleService:
         module: Optional[str] = None,
     ) -> tuple[Sequence[Permission], int]:
         offset = (page - 1) * limit
-        return await self.role_repo.search_permissions(
+        return await self._role_repo.search_permissions(
             offset=offset, limit=limit, search_term=search, module=module
         )
 
@@ -63,8 +67,8 @@ class RoleService:
         role = await self.get_role(role_id)
         return role.permissions
 
-    async def create_permission(self, perm_in: "PermissionCreate") -> Permission:
-        existing = await self.role_repo.get_permission_by_code(perm_in.code)
+    async def create_permission(self, perm_in: PermissionCreate) -> Permission:
+        existing = await self._role_repo.get_permission_by_code(perm_in.code)
         if existing:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -79,10 +83,10 @@ class RoleService:
             module=perm_in.module,
             description=perm_in.description,
         )
-        return await self.role_repo.create_permission(perm)
+        return await self._role_repo.create_permission(perm)
 
     async def get_role(self, role_id: uuid.UUID) -> Role:
-        role = await self.role_repo.get_with_permissions(role_id)
+        role = await self._role_repo.get_with_permissions(role_id)
         if not role:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -91,7 +95,7 @@ class RoleService:
         return role
 
     async def create_role(self, role_in: RoleCreate) -> Role:
-        existing_role = await self.role_repo.get_by_name(role_in.name)
+        existing_role = await self._role_repo.get_by_name(role_in.name)
         if existing_role:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -109,8 +113,8 @@ class RoleService:
             is_system=False,
             permissions=permissions,
         )
-        await self.role_repo.create(role)
-        return role
+        await self._role_repo.create(role)
+        return await self.get_role(role.id)
 
     async def update_role(self, role_id: uuid.UUID, role_in: RoleUpdate) -> Role:
         role = await self.get_role(role_id)
@@ -124,7 +128,7 @@ class RoleService:
                         "message": "Cannot rename a system role.",
                     },
                 )
-            existing_role = await self.role_repo.get_by_name(role_in.name)
+            existing_role = await self._role_repo.get_by_name(role_in.name)
             if existing_role:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -144,8 +148,7 @@ class RoleService:
             )
             role.permissions = permissions
 
-        await self.db.flush()
-        return role
+        return await self.get_role(role_id)
 
     async def delete_role(self, role_id: uuid.UUID) -> None:
         role = await self.get_role(role_id)
@@ -158,8 +161,7 @@ class RoleService:
                 },
             )
 
-        # Check if users are assigned at service level
-        assigned_user_count = await self.role_repo.count_assigned_users(role_id)
+        assigned_user_count = await self._role_repo.count_assigned_users(role_id)
         if assigned_user_count > 0:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -169,12 +171,9 @@ class RoleService:
                 },
             )
 
-        # Flush delete and handle DB-level constraint violations
         try:
-            await self.role_repo.delete(role)
-            await self.db.flush()
+            await self._role_repo.delete(role)
         except IntegrityError as exc:
-            await self.db.rollback()
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={

@@ -1,11 +1,14 @@
 import uuid
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query, status
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import Depends, Query, status
 
-from app.api.deps import get_current_user, require_permission
-from app.db.session import get_db
+from app.api.deps import (
+    ProtectedAPIRouter,
+    get_current_user,
+    get_user_service,
+    require_permission,
+)
 from app.models.user import User
 from app.modules.users.schemas import (
     ProfileResponse,
@@ -16,7 +19,7 @@ from app.modules.users.schemas import (
 from app.modules.users.service import UserService
 from app.schemas.common import MetaPayload, StandardResponse
 
-router = APIRouter()
+router = ProtectedAPIRouter()
 
 
 @router.get(
@@ -32,9 +35,8 @@ async def list_users(
     role_id: Optional[uuid.UUID] = Query(None),
     role_name: Optional[str] = Query(None),
     current_user: User = Depends(require_permission("users:read")),
-    db: AsyncSession = Depends(get_db),
+    user_service: UserService = Depends(get_user_service),
 ):
-    user_service = UserService(db)
     user_list, total = await user_service.list_users(
         page=page,
         limit=limit,
@@ -56,9 +58,8 @@ async def list_users(
 async def create_user(
     payload: UserCreate,
     current_user: User = Depends(require_permission("users:write")),
-    db: AsyncSession = Depends(get_db),
+    user_service: UserService = Depends(get_user_service),
 ):
-    user_service = UserService(db)
     created_user = await user_service.create_user(payload, current_user)
     return StandardResponse.ok(data=created_user)
 
@@ -69,9 +70,9 @@ async def create_user(
     response_model_exclude_none=True,
 )
 async def get_my_profile(
-    current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+    current_user: User = Depends(get_current_user),
+    user_service: UserService = Depends(get_user_service),
 ):
-    user_service = UserService(db)
     profile = await user_service.get_or_create_profile(current_user.id)
     return StandardResponse.ok(data=profile)
 
@@ -84,8 +85,7 @@ async def get_my_profile(
 async def update_my_profile(
     payload: ProfileUpdate,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    user_service: UserService = Depends(get_user_service),
 ):
-    user_service = UserService(db)
     updated_profile = await user_service.update_profile(current_user.id, payload)
     return StandardResponse.ok(data=updated_profile)
