@@ -107,8 +107,12 @@ async def test_list_permissions():
             "/api/v1/permissions", headers={"Authorization": f"Bearer {token}"}
         )
         assert res.status_code == 200
-        permissions = res.json()
+        body = res.json()
+        assert body["success"] is True
+        permissions = body["data"]
         assert len(permissions) >= 2
+        assert "meta" in body
+        assert body["meta"]["total"] >= 2
 
 
 @pytest.mark.asyncio
@@ -160,8 +164,19 @@ async def test_system_role_protection():
         roles_res = await ac.get(
             "/api/v1/roles", headers={"Authorization": f"Bearer {token}"}
         )
-        roles = roles_res.json()
+        body = roles_res.json()
+        roles = body["data"]
         system_role = next(r for r in roles if r["name"] == "super_admin")
+
+        # Dedicated endpoint to fetch permissions for specific role
+        role_perms_res = await ac.get(
+            f"/api/v1/roles/{system_role['id']}/permissions",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert role_perms_res.status_code == 200
+        perm_body = role_perms_res.json()
+        assert perm_body["success"] is True
+        assert len(perm_body["data"]) >= 1
 
         # Attempt to delete system role
         del_res = await ac.delete(
@@ -169,5 +184,5 @@ async def test_system_role_protection():
             headers={"Authorization": f"Bearer {token}"},
         )
         assert del_res.status_code == 400
-        body = del_res.json()
-        assert body["error"]["code"] == "SYSTEM_ROLE_PROTECTED"
+        err_body = del_res.json()
+        assert err_body["error"]["code"] == "SYSTEM_ROLE_PROTECTED"

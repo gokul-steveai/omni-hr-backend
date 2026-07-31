@@ -1,5 +1,5 @@
 import uuid
-from typing import Sequence
+from typing import Optional, Sequence
 
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,11 +14,32 @@ class RoleService:
         self.db = db
         self.role_repo = RoleRepository(db)
 
-    async def list_roles(self) -> Sequence[Role]:
-        return await self.role_repo.list_roles()
+    async def list_roles(
+        self,
+        page: int = 1,
+        limit: int = 20,
+        search: Optional[str] = None,
+    ) -> tuple[Sequence[Role], int]:
+        offset = (page - 1) * limit
+        return await self.role_repo.search_roles(
+            offset=offset, limit=limit, search_term=search
+        )
 
-    async def list_permissions(self) -> Sequence[Permission]:
-        return await self.role_repo.list_permissions()
+    async def list_permissions(
+        self,
+        page: int = 1,
+        limit: int = 20,
+        search: Optional[str] = None,
+        module: Optional[str] = None,
+    ) -> tuple[Sequence[Permission], int]:
+        offset = (page - 1) * limit
+        return await self.role_repo.search_permissions(
+            offset=offset, limit=limit, search_term=search, module=module
+        )
+
+    async def get_role_permissions(self, role_id: uuid.UUID) -> Sequence[Permission]:
+        role = await self.get_role(role_id)
+        return role.permissions
 
     async def create_permission(self, perm_in: "PermissionCreate") -> Permission:
         existing = await self.role_repo.get_permission_by_code(perm_in.code)

@@ -28,6 +28,7 @@ class RoleRead(BaseModel):
     name: str
     description: Optional[str] = None
     is_system: bool
+    permission_ids: list[uuid.UUID] = []
     created_at: datetime
     updated_at: datetime
 

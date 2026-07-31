@@ -77,3 +77,7 @@ class Role(Base):
         lazy="selectin",
     )
     users: Mapped[list["User"]] = relationship("User", back_populates="role")
+
+    @property
+    def permission_ids(self) -> list[uuid.UUID]:
+        return [p.id for p in self.permissions]

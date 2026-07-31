@@ -37,11 +37,73 @@ class RoleRepository(BaseRepository[Role]):
         )
         return query_result.scalars().all()
 
+    async def search_roles(
+        self,
+        offset: int = 0,
+        limit: int = 20,
+        search_term: Optional[str] = None,
+    ) -> tuple[Sequence[Role], int]:
+        from sqlalchemy import func, or_
+
+        query = select(Role).options(selectinload(Role.permissions))
+
+        if search_term:
+            search_pattern = f"%{search_term}%"
+            query = query.where(
+                or_(
+                    Role.name.ilike(search_pattern),
+                    Role.description.ilike(search_pattern),
+                )
+            )
+
+        count_query = select(func.count()).select_from(query.subquery())
+        total_records = (await self.database_session.execute(count_query)).scalar() or 0
+
+        query = query.order_by(Role.created_at.asc()).offset(offset).limit(limit)
+        role_records = (await self.database_session.execute(query)).scalars().all()
+        return role_records, total_records
+
     async def list_permissions(self) -> Sequence[Permission]:
         query_result = await self.database_session.execute(
             select(Permission).order_by(Permission.module.asc(), Permission.code.asc())
         )
         return query_result.scalars().all()
+
+    async def search_permissions(
+        self,
+        offset: int = 0,
+        limit: int = 20,
+        search_term: Optional[str] = None,
+        module: Optional[str] = None,
+    ) -> tuple[Sequence[Permission], int]:
+        from sqlalchemy import func, or_
+
+        query = select(Permission)
+
+        if module:
+            query = query.where(Permission.module == module)
+        if search_term:
+            search_pattern = f"%{search_term}%"
+            query = query.where(
+                or_(
+                    Permission.code.ilike(search_pattern),
+                    Permission.module.ilike(search_pattern),
+                    Permission.description.ilike(search_pattern),
+                )
+            )
+
+        count_query = select(func.count()).select_from(query.subquery())
+        total_records = (await self.database_session.execute(count_query)).scalar() or 0
+
+        query = query.order_by(Permission.module.asc(), Permission.code.asc()).offset(offset).limit(limit)
+        perm_records = (await self.database_session.execute(query)).scalars().all()
+        return perm_records, total_records
+
+    async def get_role_permissions(self, role_id: uuid.UUID) -> Sequence[Permission]:
+        role = await self.get_with_permissions(role_id)
+        if not role:
+            return []
+        return role.permissions
 
     async def get_permission_by_code(self, code: str) -> Optional[Permission]:
         query_result = await self.database_session.execute(

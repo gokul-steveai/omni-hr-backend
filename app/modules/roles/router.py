@@ -1,7 +1,7 @@
 import uuid
-from typing import Sequence
+from typing import Optional
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import require_roles
@@ -11,10 +11,12 @@ from app.modules.roles.schemas import (
     PermissionCreate,
     PermissionRead,
     RoleCreate,
+    RoleRead,
     RoleUpdate,
     RoleWithPermissionsRead,
 )
 from app.modules.roles.service import RoleService
+from app.schemas.common import MetaPayload, StandardResponse
 
 router = APIRouter(prefix="/roles", tags=["Roles & Permissions"])
 permissions_router = APIRouter(prefix="/permissions", tags=["Roles & Permissions"])
@@ -22,26 +24,56 @@ permissions_router = APIRouter(prefix="/permissions", tags=["Roles & Permissions
 
 @router.get(
     "",
-    response_model=list[RoleWithPermissionsRead],
+    response_model=StandardResponse[list[RoleRead]],
     dependencies=[Depends(require_roles([UserRole.SUPER_ADMIN, UserRole.HR_MANAGER]))],
 )
 async def list_roles(
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100),
+    search: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
-) -> Sequence[RoleWithPermissionsRead]:
+):
     service = RoleService(db)
-    return await service.list_roles()
+    roles, total = await service.list_roles(page=page, limit=limit, search=search)
+    role_list = [RoleRead.model_validate(r) for r in roles]
+    meta = MetaPayload(page=page, limit=limit, total=total)
+    return StandardResponse.ok(data=role_list, meta=meta)
 
 
 @permissions_router.get(
     "",
-    response_model=list[PermissionRead],
+    response_model=StandardResponse[list[PermissionRead]],
     dependencies=[Depends(require_roles([UserRole.SUPER_ADMIN, UserRole.HR_MANAGER]))],
 )
 async def list_permissions(
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100),
+    search: Optional[str] = Query(None),
+    module: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
-) -> Sequence[PermissionRead]:
+):
     service = RoleService(db)
-    return await service.list_permissions()
+    perms, total = await service.list_permissions(
+        page=page, limit=limit, search=search, module=module
+    )
+    perm_list = [PermissionRead.model_validate(p) for p in perms]
+    meta = MetaPayload(page=page, limit=limit, total=total)
+    return StandardResponse.ok(data=perm_list, meta=meta)
+
+
+@router.get(
+    "/{role_id}/permissions",
+    response_model=StandardResponse[list[PermissionRead]],
+    dependencies=[Depends(require_roles([UserRole.SUPER_ADMIN, UserRole.HR_MANAGER]))],
+)
+async def get_role_permissions(
+    role_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    service = RoleService(db)
+    permissions = await service.get_role_permissions(role_id)
+    perm_list = [PermissionRead.model_validate(p) for p in permissions]
+    return StandardResponse.ok(data=perm_list)
 
 
 @permissions_router.post(

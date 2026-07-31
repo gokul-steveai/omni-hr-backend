@@ -51,12 +51,14 @@
 *   `PUT /api/v1/users/me/profile` - Update allowed self-service profile fields.
 
 ### 3.2 Roles & Permissions Management (RBAC)
-*   `GET /api/v1/roles` - List all system and custom roles with their permissions.
+*   `GET /api/v1/roles` - Searchable, paginated roles list (`page`, `limit`, `search`) returning role metadata and `permission_ids` array.
 *   `POST /api/v1/roles` - Create a new custom role with assigned permission IDs (Super Admin only).
-*   `GET /api/v1/roles/{role_id}` - Get detailed role specifications and permissions list.
+*   `GET /api/v1/roles/{role_id}` - Get detailed role specifications and permission IDs.
+*   `GET /api/v1/roles/{role_id}/permissions` - Dedicated endpoint to fetch full permissions list for a specific role.
 *   `PUT /api/v1/roles/{role_id}` - Update role metadata and permissions list (Super Admin only).
 *   `DELETE /api/v1/roles/{role_id}` - Delete custom role (Protected against deleting system roles or roles in use).
-*   `GET /api/v1/permissions` - List available system permissions grouped by module (`users`, `roles`, `leave`, `payroll`, `timesheet`, `audit`).
+*   `GET /api/v1/permissions` - Searchable, paginated system permissions list (`page`, `limit`, `search`, `module`).
+*   `POST /api/v1/permissions` - Register new system permission code (Super Admin only).
 
 ### 3.3 User & Department Directory (Admin/HR/Lead)
 *   `GET /api/v1/users` - Searchable, paginated user list with filters by `department_id`, `role_id`, or `role_name`.
