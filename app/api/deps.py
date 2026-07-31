@@ -6,7 +6,6 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.redis import get_redis
 from app.core.services.cache_service import cache_service
 from app.core.services.idempotency_service import (
     check_idempotency,
@@ -24,7 +23,6 @@ from app.modules.users.service import UserService
 
 __all__ = [
     "get_db",
-    "get_redis",
     "cache_service",
     "idempotency_service",
     "check_idempotency",

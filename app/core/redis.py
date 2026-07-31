@@ -1,5 +1,5 @@
 import logging
-from typing import AsyncGenerator, Optional
+from typing import Optional
 
 from redis.asyncio import Redis, from_url
 
@@ -53,8 +53,3 @@ async def close_redis() -> None:
 def get_redis_client() -> Optional[Redis]:
     """Get the active initialized Redis client instance."""
     return redis_client
-
-
-async def get_redis() -> AsyncGenerator[Optional[Redis], None]:
-    """FastAPI Dependency for accessing Redis client instance."""
-    yield redis_client
