@@ -1,55 +1,55 @@
 from fastapi import APIRouter, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user
-from app.db.session import get_db
+from app.api.deps import ProtectedAPIRouter, get_auth_service, get_current_user
 from app.models.user import User
 from app.modules.auth.schemas import LoginRequest, RefreshTokenRequest, TokenResponse
 from app.modules.auth.service import AuthService
 from app.modules.users.schemas import UserResponse
 from app.schemas.common import StandardResponse
 
-router = APIRouter()
+public_auth_router = APIRouter()
+protected_auth_router = ProtectedAPIRouter()
 
 
-@router.post(
+@public_auth_router.post(
     "/login",
     response_model=StandardResponse[TokenResponse],
     response_model_exclude_none=True,
 )
-async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)):
-    auth_service = AuthService(db)
+async def login(
+    payload: LoginRequest,
+    auth_service: AuthService = Depends(get_auth_service),
+):
     token_response = await auth_service.authenticate_user(payload)
     return StandardResponse.ok(data=token_response)
 
 
-@router.post(
+@public_auth_router.post(
     "/refresh",
     response_model=StandardResponse[TokenResponse],
     response_model_exclude_none=True,
 )
 async def refresh_access_token(
-    payload: RefreshTokenRequest, db: AsyncSession = Depends(get_db)
+    payload: RefreshTokenRequest,
+    auth_service: AuthService = Depends(get_auth_service),
 ):
-    auth_service = AuthService(db)
     token_response = await auth_service.refresh_tokens(payload.refresh_token)
     return StandardResponse.ok(data=token_response)
 
 
-@router.post(
+@protected_auth_router.post(
     "/logout", response_model=StandardResponse[dict], response_model_exclude_none=True
 )
 async def logout(
     payload: RefreshTokenRequest,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    auth_service: AuthService = Depends(get_auth_service),
 ):
-    auth_service = AuthService(db)
     await auth_service.logout(str(current_user.id), payload.refresh_token)
     return StandardResponse.ok(data={"message": "Logged out successfully."})
 
 
-@router.get(
+@protected_auth_router.get(
     "/me",
     response_model=StandardResponse[UserResponse],
     response_model_exclude_none=True,

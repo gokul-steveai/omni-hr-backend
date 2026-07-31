@@ -17,10 +17,15 @@ from app.modules.users.schemas import (
 
 
 class UserService:
-    def __init__(self, db: AsyncSession):
-        self.db = db
-        self.user_repo = UserRepository(db)
-        self.role_repo = RoleRepository(db)
+    def __init__(
+        self,
+        database_session: AsyncSession,
+        user_repository: UserRepository,
+        role_repository: RoleRepository,
+    ):
+        self.database_session = database_session
+        self.user_repo = user_repository
+        self.role_repo = role_repository
 
     async def list_users(
         self,
@@ -100,8 +105,7 @@ class UserService:
         await self.user_repo.create(new_user)
 
         profile = EmployeeProfile(user_id=new_user.id)
-        self.db.add(profile)
-        await self.db.commit()
+        self.database_session.add(profile)
 
         user_details = await self.user_repo.get_with_details(new_user.id)
         return UserResponse.model_validate(user_details)
@@ -110,11 +114,10 @@ class UserService:
         profile = await self.user_repo.get_profile(user_id)
         if not profile:
             profile = EmployeeProfile(user_id=user_id)
-            self.db.add(profile)
-            await self.db.commit()
-            await self.db.refresh(profile)
+            self.database_session.add(profile)
 
-        return ProfileResponse.model_validate(profile)
+        profile_updated = await self.user_repo.get_profile(user_id)
+        return ProfileResponse.model_validate(profile_updated)
 
     async def update_profile(
         self, user_id: uuid.UUID, payload: ProfileUpdate
@@ -122,12 +125,11 @@ class UserService:
         profile = await self.user_repo.get_profile(user_id)
         if not profile:
             profile = EmployeeProfile(user_id=user_id)
-            self.db.add(profile)
+            self.database_session.add(profile)
 
         update_data = payload.model_dump(exclude_unset=True)
         for field, val in update_data.items():
             setattr(profile, field, val)
 
-        await self.db.commit()
-        await self.db.refresh(profile)
-        return ProfileResponse.model_validate(profile)
+        profile_updated = await self.user_repo.get_profile(user_id)
+        return ProfileResponse.model_validate(profile_updated)

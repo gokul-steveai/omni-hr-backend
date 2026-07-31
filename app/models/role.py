@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime, timezone
+from enum import Enum
 from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Table
@@ -10,6 +11,36 @@ from app.db.session import Base
 
 if TYPE_CHECKING:
     from app.models.user import User
+
+
+class PermissionEnum(str, Enum):
+    # Users Module
+    USERS_READ = "users:read"
+    USERS_WRITE = "users:write"
+    USERS_DELETE = "users:delete"
+
+    # Roles & Permissions Module
+    ROLES_READ = "roles:read"
+    ROLES_WRITE = "roles:write"
+    ROLES_DELETE = "roles:delete"
+
+    # Leave Module
+    LEAVE_APPLY = "leave:apply"
+    LEAVE_READ = "leave:read"
+    LEAVE_APPROVE = "leave:approve"
+    LEAVE_MANAGE_TYPES = "leave:manage_types"
+
+    # Payroll Module
+    PAYROLL_READ = "payroll:read"
+    PAYROLL_PROCESS = "payroll:process"
+
+    # Timesheets Module
+    TIMESHEET_SUBMIT = "timesheet:submit"
+    TIMESHEET_APPROVE = "timesheet:approve"
+
+    # Audit Module
+    AUDIT_READ = "audit:read"
+
 
 # Junction table for Many-to-Many relationship between Roles and Permissions
 role_permissions = Table(

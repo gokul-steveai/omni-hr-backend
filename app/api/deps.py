@@ -1,21 +1,79 @@
 import uuid
+from enum import Enum
 from typing import Callable
 
-from fastapi import Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.services.token_service import TokenService
 from app.db.session import get_db
+from app.models.role import PermissionEnum
 from app.models.user import User, UserRole
+from app.modules.auth.service import AuthService
+from app.modules.roles.repository import RoleRepository
+from app.modules.roles.service import RoleService
 from app.modules.users.repository import UserRepository
+from app.modules.users.service import UserService
 
 security_scheme = HTTPBearer()
 
 
+# -----------------------------------------------------------------------------
+# Dependency Injection Resolvers for Repositories and Domain Services
+# -----------------------------------------------------------------------------
+
+
+def get_user_repository(
+    database_session: AsyncSession = Depends(get_db),
+) -> UserRepository:
+    return UserRepository(database_session)
+
+
+def get_role_repository(
+    database_session: AsyncSession = Depends(get_db),
+) -> RoleRepository:
+    return RoleRepository(database_session)
+
+
+def get_auth_service(
+    database_session: AsyncSession = Depends(get_db),
+    user_repository: UserRepository = Depends(get_user_repository),
+) -> AuthService:
+    return AuthService(
+        database_session=database_session, user_repository=user_repository
+    )
+
+
+def get_user_service(
+    database_session: AsyncSession = Depends(get_db),
+    user_repository: UserRepository = Depends(get_user_repository),
+    role_repository: RoleRepository = Depends(get_role_repository),
+) -> UserService:
+    return UserService(
+        database_session=database_session,
+        user_repository=user_repository,
+        role_repository=role_repository,
+    )
+
+
+def get_role_service(
+    database_session: AsyncSession = Depends(get_db),
+    role_repository: RoleRepository = Depends(get_role_repository),
+) -> RoleService:
+    return RoleService(
+        database_session=database_session, role_repository=role_repository
+    )
+
+
+# -----------------------------------------------------------------------------
+# Authentication & Authorization Dependencies
+# -----------------------------------------------------------------------------
+
+
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security_scheme),
-    db: AsyncSession = Depends(get_db),
+    user_repository: UserRepository = Depends(get_user_repository),
 ) -> User:
     token = credentials.credentials
     payload = TokenService.decode_token(token, is_refresh=False)
@@ -49,8 +107,7 @@ async def get_current_user(
             },
         ) from None
 
-    user_repo = UserRepository(db)
-    user = await user_repo.get_with_details(user_uuid)
+    user = await user_repository.get_with_details(user_uuid)
 
     if not user:
         raise HTTPException(
@@ -93,7 +150,15 @@ def require_roles(allowed_roles: list[UserRole | str]) -> Callable:
     return role_checker
 
 
-def require_permission(permission_code: str) -> Callable:
+def require_permission(
+    permission_code: PermissionEnum | str,
+) -> Callable:
+    target_code = (
+        permission_code.value
+        if isinstance(permission_code, Enum)
+        else str(permission_code)
+    )
+
     async def permission_checker(
         current_user: User = Depends(get_current_user),
     ) -> User:
@@ -109,14 +174,31 @@ def require_permission(permission_code: str) -> Callable:
             else []
         )
 
-        if permission_code not in user_permissions:
+        if target_code not in user_permissions:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail={
                     "code": "PERMISSION_DENIED",
-                    "message": f"Required permission '{permission_code}' is missing.",
+                    "message": f"Required permission '{target_code}' is missing.",
                 },
             )
         return current_user
 
     return permission_checker
+
+
+# -----------------------------------------------------------------------------
+# Reusable Protected Router Abstraction
+# -----------------------------------------------------------------------------
+
+
+class ProtectedAPIRouter(APIRouter):
+    """
+    APIRouter subclass that automatically appends Depends(get_current_user)
+    to enforce token authentication across all registered endpoints.
+    """
+
+    def __init__(self, *args, dependencies: list | None = None, **kwargs):
+        deps = list(dependencies) if dependencies else []
+        deps.append(Depends(get_current_user))
+        super().__init__(*args, dependencies=deps, **kwargs)

@@ -11,7 +11,7 @@ from app.core.security import get_password_hash
 from app.db.session import AsyncSessionLocal, Base, engine
 from app.models.leave import LeaveType, LeaveTypeEnum
 from app.models.organization import Department, Designation
-from app.models.role import Permission, Role
+from app.models.role import Permission, PermissionEnum, Role
 from app.models.user import EmployeeProfile, User, UserRole
 
 
@@ -85,39 +85,56 @@ async def seed_database():
         print("Seeding Permissions Catalog & System Roles...")
         permissions_data = [
             # Users
-            ("users:read", "users", "View user accounts and profiles"),
-            ("users:write", "users", "Create and edit user accounts"),
-            ("users:delete", "users", "Delete user accounts"),
+            (PermissionEnum.USERS_READ, "users", "View user accounts and profiles"),
+            (PermissionEnum.USERS_WRITE, "users", "Create and edit user accounts"),
+            (PermissionEnum.USERS_DELETE, "users", "Delete user accounts"),
             # Roles & Permissions
-            ("roles:read", "roles", "View roles and permissions catalog"),
-            ("roles:write", "roles", "Create and modify custom roles"),
-            ("roles:delete", "roles", "Delete custom roles"),
+            (PermissionEnum.ROLES_READ, "roles", "View roles and permissions catalog"),
+            (PermissionEnum.ROLES_WRITE, "roles", "Create and modify custom roles"),
+            (PermissionEnum.ROLES_DELETE, "roles", "Delete custom roles"),
             # Leave
-            ("leave:apply", "leave", "Apply for leave"),
-            ("leave:read", "leave", "View leave requests"),
-            ("leave:approve", "leave", "Approve or reject leave requests"),
-            ("leave:manage_types", "leave", "Create and manage leave types"),
+            (PermissionEnum.LEAVE_APPLY, "leave", "Apply for leave"),
+            (PermissionEnum.LEAVE_READ, "leave", "View leave requests"),
+            (PermissionEnum.LEAVE_APPROVE, "leave", "Approve or reject leave requests"),
+            (
+                PermissionEnum.LEAVE_MANAGE_TYPES,
+                "leave",
+                "Create and manage leave types",
+            ),
             # Payroll
-            ("payroll:read", "payroll", "View payslips and salary structures"),
-            ("payroll:process", "payroll", "Process pay runs and salary structures"),
+            (
+                PermissionEnum.PAYROLL_READ,
+                "payroll",
+                "View payslips and salary structures",
+            ),
+            (
+                PermissionEnum.PAYROLL_PROCESS,
+                "payroll",
+                "Process pay runs and salary structures",
+            ),
             # Timesheets
-            ("timesheet:submit", "timesheet", "Submit timesheet entries"),
-            ("timesheet:approve", "timesheet", "Approve timesheet entries"),
+            (PermissionEnum.TIMESHEET_SUBMIT, "timesheet", "Submit timesheet entries"),
+            (
+                PermissionEnum.TIMESHEET_APPROVE,
+                "timesheet",
+                "Approve timesheet entries",
+            ),
             # Audit
-            ("audit:read", "audit", "View system audit logs"),
+            (PermissionEnum.AUDIT_READ, "audit", "View system audit logs"),
         ]
 
         perm_map = {}
         for code, module, desc in permissions_data:
+            code_str = code.value if hasattr(code, "value") else str(code)
             res = await session.execute(
-                select(Permission).where(Permission.code == code)
+                select(Permission).where(Permission.code == code_str)
             )
             perm = res.scalar_one_or_none()
             if not perm:
-                perm = Permission(code=code, module=module, description=desc)
+                perm = Permission(code=code_str, module=module, description=desc)
                 session.add(perm)
                 await session.flush()
-            perm_map[code] = perm
+            perm_map[code_str] = perm
 
         # System Roles
         roles_data = [

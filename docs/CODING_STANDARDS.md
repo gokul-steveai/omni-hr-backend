@@ -11,21 +11,22 @@ Coding standards, architecture principles, and software design patterns for the 
 * **OCP**: Extend system capabilities (leave approval strategies, tax calculation engines, AI tools) via abstract interfaces and registry decorators without modifying existing core code.
 * **LSP**: Domain repositories inherit consistently from generic `BaseRepository[ModelType]`.
 * **ISP**: Pydantic v2 request/response schemas expose strictly required properties per endpoint.
-* **DIP**: Utilize FastAPI `Depends` for dependency injection of database sessions, security contexts, and business services.
+* **DIP**: Utilize FastAPI `Depends` for dependency injection of database sessions, repositories (`get_user_repository`), and business services (`get_user_service`). Services receive repository dependencies via Constructor Injection.
 
 ### 1.2 DRY & YAGNI
 * Eliminate duplicated business rules, DB query patterns, and API payload definitions.
-* Avoid speculative over-engineering; build clean, pragmatic code for active requirements.
+* Avoid speculative over-engineering; build clean, pragmatic code leveraging native framework capabilities.
 
 ### 1.3 Feature-Driven Modular Architecture
 * Group code into feature modules under `backend/app/modules/{auth, users, leaves, payroll, timesheets, attendance, ai_agent}` containing dedicated `router.py`, `service.py`, `repository.py`, and `schemas.py`.
 
-### 1.4 Unit of Work Pattern
-* Manage multi-repository operations inside `UnitOfWork(database_session)` context managers (`async with UnitOfWork(db) as unit_of_work:`).
-* Services must never invoke raw `db.commit()` or `db.rollback()` directly.
+### 1.4 Type-Safe Permissions & ProtectedAPIRouter
+* All RBAC permission codes are defined centrally in `PermissionEnum(str, Enum)` in `app.models.role`.
+* Endpoints pass `PermissionEnum` members to `Depends(require_permission(PermissionEnum.USERS_READ))` for type-safe authorization checks.
+* Protected domain modules instantiate `ProtectedAPIRouter`, enforcing token authentication automatically at the router level.
 
 ### 1.5 Expressive Naming Standard
-* Use self-descriptive names for variables, parameters, classes, and functions (`user_entity`, `database_session`, `unit_of_work`, `persisted_token`). Cryptic single-letter or abbreviated names are strictly forbidden.
+* Use self-descriptive names for variables, parameters, classes, and functions (`user_entity`, `database_session`, `user_repository`). Cryptic single-letter or abbreviated names are strictly forbidden.
 
 ---
 
