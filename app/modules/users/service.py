@@ -41,7 +41,7 @@ class UserService:
         else:
             user = await self.user_repo.get_by_id(user_id)
 
-        if not user:
+        if not user or not user.is_active:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
@@ -49,6 +49,7 @@ class UserService:
                     "message": "User with the specified ID was not found.",
                 },
             )
+
         return user
 
     def _validate_role_assignment(
@@ -248,7 +249,8 @@ class UserService:
                 },
             )
 
-        await self.user_repo.delete(existing_user)
+        existing_user.is_active = False
+        await self.user_repo.database_session.flush()
 
         if self.audit_repo:
             audit = AuditLog(

@@ -2,7 +2,6 @@ import uuid
 from typing import Optional, Sequence
 
 from fastapi import HTTPException, status
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.audit import AuditAction, AuditEntity, AuditLog, AuditModule
@@ -91,7 +90,7 @@ class RoleService:
 
     async def get_role(self, role_id: uuid.UUID) -> Role:
         role = await self._role_repo.get_with_permissions(role_id)
-        if not role:
+        if not role or not role.is_active:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={"code": "ROLE_NOT_FOUND", "message": "Role not found."},
@@ -199,16 +198,8 @@ class RoleService:
                 },
             )
 
-        try:
-            await self._role_repo.delete(role)
-        except IntegrityError as exc:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail={
-                    "code": "ROLE_IN_USE",
-                    "message": "Cannot delete role while users are assigned to it.",
-                },
-            ) from exc
+        role.is_active = False
+        await self._role_repo.database_session.flush()
 
         if self._audit_repo:
             audit = AuditLog(

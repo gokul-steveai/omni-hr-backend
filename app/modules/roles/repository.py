@@ -33,6 +33,7 @@ class RoleRepository(BaseRepository[Role]):
         query_result = await self.database_session.execute(
             select(Role)
             .options(selectinload(Role.permissions))
+            .where(Role.is_active.is_(True))
             .order_by(Role.created_at.asc())
         )
         return query_result.scalars().all()
@@ -45,7 +46,11 @@ class RoleRepository(BaseRepository[Role]):
     ) -> tuple[Sequence[Role], int]:
         from sqlalchemy import func, or_
 
-        query = select(Role).options(selectinload(Role.permissions))
+        query = (
+            select(Role)
+            .where(Role.is_active.is_(True))
+            .options(selectinload(Role.permissions))
+        )
 
         if search_term:
             search_pattern = f"%{search_term}%"
