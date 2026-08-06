@@ -320,9 +320,17 @@ async def test_accrual_policy_creation_and_manual_grant():
         assert policy_res.json()["data"]["accrual_rate"] == 1.5
 
         # 2. Grant manual leave days to employee
-        users_res = await ac.get("/api/v1/users", headers=headers)
+        users_res = await ac.get("/api/v1/users?limit=100", headers=headers)
         emp_user = next(
-            u for u in users_res.json()["data"] if u["email"] == "emp_leave@omnihr.com"
+            (
+                u
+                for u in users_res.json()["data"]
+                if u["email"] == "emp_leave@omnihr.com"
+            ),
+            None,
+        )
+        assert emp_user is not None, (
+            "Employee user 'emp_leave@omnihr.com' was not found in user list."
         )
 
         grant_res = await ac.post(

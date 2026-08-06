@@ -260,7 +260,9 @@ class LeaveService:
         payload: LeaveStatusUpdatePayload,
         approver_id: uuid.UUID,
     ) -> LeaveRequestRead:
+        """Approve or reject a pending leave request (Single-Tier Manager/HR Approval Workflow)."""
         leave_request = await self.leave_repo.get_leave_request_with_details(request_id)
+
         if not leave_request:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,

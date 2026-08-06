@@ -147,7 +147,6 @@ class UserService:
                 entity=AuditEntity.USER.value,
                 entity_id=new_user.id,
                 extra_metadata={
-                    "email": new_user.email,
                     "role_id": str(role_id) if role_id else None,
                 },
             )
@@ -160,9 +159,9 @@ class UserService:
         if not profile:
             profile = EmployeeProfile(user_id=user_id)
             self.database_session.add(profile)
+            await self.database_session.flush()
 
-        profile_updated = await self.user_repo.get_profile(user_id)
-        return ProfileResponse.model_validate(profile_updated)
+        return ProfileResponse.model_validate(profile)
 
     async def update_profile(
         self, user_id: uuid.UUID, payload: ProfileUpdate
@@ -176,7 +175,7 @@ class UserService:
         for field, val in update_data.items():
             setattr(profile, field, val)
 
-        profile_updated = await self.user_repo.get_profile(user_id)
+        await self.database_session.flush()
 
         if self.audit_repo:
             audit = AuditLog(
@@ -189,7 +188,7 @@ class UserService:
             )
             await self.audit_repo.create_log(audit)
 
-        return ProfileResponse.model_validate(profile_updated)
+        return ProfileResponse.model_validate(profile)
 
     async def get_user_by_id(self, user_id: uuid.UUID) -> UserResponse:
         user = await self._get_user_or_404(user_id, with_details=True)
@@ -219,17 +218,25 @@ class UserService:
                 )
             self._validate_role_assignment(target_role.name, requesting_user)
 
-        await self.user_repo.update(existing_user, update_data)
+        updated_fields = []
+        for field_name, new_val in update_data.items():
+            if hasattr(existing_user, field_name):
+                current_val = getattr(existing_user, field_name)
+                if current_val != new_val:
+                    setattr(existing_user, field_name, new_val)
+                    updated_fields.append(field_name)
+
+        await self.user_repo.database_session.flush()
         updated_user = await self.user_repo.get_with_details(user_id)
 
-        if self.audit_repo:
+        if self.audit_repo and updated_fields:
             audit = AuditLog(
                 user_id=requesting_user.id if requesting_user else user_id,
                 module=AuditModule.USERS.value,
                 action=AuditAction.USER_UPDATE.value,
                 entity=AuditEntity.USER.value,
                 entity_id=user_id,
-                extra_metadata={"updated_fields": list(update_data.keys())},
+                extra_metadata={"updated_fields": updated_fields},
             )
             await self.audit_repo.create_log(audit)
 
@@ -259,6 +266,5 @@ class UserService:
                 action=AuditAction.USER_DELETE.value,
                 entity=AuditEntity.USER.value,
                 entity_id=user_id,
-                extra_metadata={"deleted_user_email": existing_user.email},
             )
             await self.audit_repo.create_log(audit)

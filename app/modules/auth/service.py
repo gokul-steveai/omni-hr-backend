@@ -56,7 +56,6 @@ class AuthService:
             action=AuditAction.USER_LOGIN.value,
             entity=AuditEntity.USER.value,
             entity_id=user_entity.id,
-            extra_metadata={"email": user_entity.email},
         )
         await self._audit_repository.create_log(login_audit)
 

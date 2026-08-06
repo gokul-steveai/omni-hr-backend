@@ -217,10 +217,14 @@ async def test_admin_get_update_delete_user():
         headers = {"Authorization": f"Bearer {admin_token}"}
 
         # 1. Fetch user list to get target employee ID
-        list_res = await ac.get("/api/v1/users", headers=headers)
+        list_res = await ac.get("/api/v1/users?limit=100", headers=headers)
         assert list_res.status_code == 200
         emp_user = next(
-            u for u in list_res.json()["data"] if u["email"] == "emp_test@omnihr.com"
+            (u for u in list_res.json()["data"] if u["email"] == "emp_test@omnihr.com"),
+            None,
+        )
+        assert emp_user is not None, (
+            "Target employee user 'emp_test@omnihr.com' was not found in user list."
         )
         target_id = emp_user["id"]
 
@@ -240,11 +244,20 @@ async def test_admin_get_update_delete_user():
 
         # 4. Attempt self deletion (should fail 400)
         admin_user = next(
-            u for u in list_res.json()["data"] if u["email"] == "admin_test@omnihr.com"
+            (
+                u
+                for u in list_res.json()["data"]
+                if u["email"] == "admin_test@omnihr.com"
+            ),
+            None,
+        )
+        assert admin_user is not None, (
+            "Admin user 'admin_test@omnihr.com' was not found in user list."
         )
         self_del_res = await ac.delete(
             f"/api/v1/users/{admin_user['id']}", headers=headers
         )
+
         assert self_del_res.status_code == 400
         assert self_del_res.json()["error"]["code"] == "CANNOT_DELETE_SELF"
 
