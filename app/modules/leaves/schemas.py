@@ -18,7 +18,7 @@ class LeaveTypeRead(BaseModel):
 
 class LeaveAccrualPolicyCreatePayload(BaseModel):
     leave_type_id: uuid.UUID
-    role_id: Optional[uuid.UUID] = None
+    designation_id: Optional[uuid.UUID] = None
     frequency: AccrualFrequency = AccrualFrequency.MONTHLY
     accrual_rate: float = Field(..., gt=0)
     max_quota: Optional[float] = None
@@ -29,7 +29,7 @@ class LeaveAccrualPolicyRead(BaseModel):
     id: uuid.UUID
     leave_type_id: uuid.UUID
     leave_type: Optional[LeaveTypeRead] = None
-    role_id: Optional[uuid.UUID] = None
+    designation_id: Optional[uuid.UUID] = None
     frequency: AccrualFrequency
     accrual_rate: float
     max_quota: Optional[float] = None

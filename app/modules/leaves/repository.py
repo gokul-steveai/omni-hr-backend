@@ -171,17 +171,17 @@ class LeaveRepository(BaseRepository[LeaveRequest]):
         )
         return query_result.scalars().all()
 
-    async def get_policy_by_role_and_type(
-        self, leave_type_id: uuid.UUID, role_id: Optional[uuid.UUID]
+    async def get_policy_by_designation_and_type(
+        self, leave_type_id: uuid.UUID, designation_id: Optional[uuid.UUID]
     ) -> Optional[LeaveAccrualPolicy]:
         query = select(LeaveAccrualPolicy).where(
             LeaveAccrualPolicy.leave_type_id == leave_type_id,
             LeaveAccrualPolicy.is_active.is_(True),
         )
-        if role_id:
-            query = query.where(LeaveAccrualPolicy.role_id == role_id)
+        if designation_id:
+            query = query.where(LeaveAccrualPolicy.designation_id == designation_id)
         else:
-            query = query.where(LeaveAccrualPolicy.role_id.is_(None))
+            query = query.where(LeaveAccrualPolicy.designation_id.is_(None))
 
         query_result = await self.database_session.execute(query)
         return query_result.scalar_one_or_none()
@@ -189,7 +189,7 @@ class LeaveRepository(BaseRepository[LeaveRequest]):
     async def get_active_users(self) -> Sequence[User]:
         query_result = await self.database_session.execute(
             select(User)
-            .options(selectinload(User.role))
+            .options(selectinload(User.designation))
             .where(User.is_active.is_(True))
         )
         return query_result.scalars().all()

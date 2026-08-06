@@ -443,8 +443,8 @@ class LeaveService:
                 },
             )
 
-        existing = await self.leave_repo.get_policy_by_role_and_type(
-            payload.leave_type_id, payload.role_id
+        existing = await self.leave_repo.get_policy_by_designation_and_type(
+            payload.leave_type_id, payload.designation_id
         )
         if existing:
             existing.frequency = payload.frequency
@@ -455,7 +455,7 @@ class LeaveService:
         else:
             policy = LeaveAccrualPolicy(
                 leave_type_id=payload.leave_type_id,
-                role_id=payload.role_id,
+                designation_id=payload.designation_id,
                 frequency=payload.frequency,
                 accrual_rate=payload.accrual_rate,
                 max_quota=payload.max_quota,
@@ -471,7 +471,9 @@ class LeaveService:
                 entity_id=policy.id,
                 extra_metadata={
                     "leave_type_id": str(payload.leave_type_id),
-                    "role_id": str(payload.role_id) if payload.role_id else None,
+                    "designation_id": str(payload.designation_id)
+                    if payload.designation_id
+                    else None,
                     "frequency": payload.frequency.value,
                     "accrual_rate": float(payload.accrual_rate),
                 },
@@ -542,11 +544,14 @@ class LeaveService:
         total_accrued_count = 0
 
         for user in active_users:
-            user_role_id = user.role_id if user.role else None
+            user_designation_id = user.designation_id
 
             for policy in policies:
-                # Role matching: policy specifically for user's role OR fallback default policy (role_id is None)
-                if policy.role_id and policy.role_id != user_role_id:
+                # Designation matching: policy specifically for user's designation OR fallback default policy (designation_id is None)
+                if (
+                    policy.designation_id
+                    and policy.designation_id != user_designation_id
+                ):
                     continue
 
                 if policy.frequency == AccrualFrequency.MANUAL:

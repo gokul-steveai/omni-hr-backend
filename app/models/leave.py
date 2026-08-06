@@ -8,6 +8,7 @@ from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.session import Base
+from app.models.organization import Designation
 from app.models.user import User
 
 
@@ -64,9 +65,9 @@ class LeaveAccrualPolicy(Base):
         ForeignKey("leave_types.id", ondelete="CASCADE"),
         nullable=False,
     )
-    role_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+    designation_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("roles.id", ondelete="CASCADE"),
+        ForeignKey("designations.id", ondelete="CASCADE"),
         nullable=True,
     )
     frequency: Mapped[AccrualFrequency] = mapped_column(
@@ -81,6 +82,9 @@ class LeaveAccrualPolicy(Base):
 
     leave_type: Mapped[Optional["LeaveType"]] = relationship(
         "LeaveType", lazy="selectin"
+    )
+    designation: Mapped[Optional["Designation"]] = relationship(
+        "Designation", lazy="selectin"
     )
 
 

@@ -310,6 +310,7 @@ async def test_accrual_policy_creation_and_manual_grant():
             headers=headers,
             json={
                 "leave_type_id": casual_type_id,
+                "designation_id": None,
                 "frequency": "monthly",
                 "accrual_rate": 1.5,
                 "max_quota": 18.0,
