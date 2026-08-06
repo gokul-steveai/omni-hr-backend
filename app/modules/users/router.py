@@ -5,11 +5,12 @@ from fastapi import Depends, Query, Request, status
 
 from app.api.deps import (
     ProtectedAPIRouter,
+    get_cache_service,
     get_current_user,
     get_user_service,
     require_permission,
 )
-from app.core.services.cache_service import cache_response, cache_service
+from app.core.services.cache_service import CacheService, cache_response
 from app.models.role import PermissionEnum
 from app.models.user import User
 from app.modules.users.schemas import (
@@ -64,6 +65,7 @@ async def create_user(
     payload: UserCreate,
     current_user: User = Depends(require_permission(PermissionEnum.USERS_WRITE)),
     user_service: UserService = Depends(get_user_service),
+    cache_service: CacheService = Depends(get_cache_service),
 ):
     created_user = await user_service.create_user(payload, current_user)
     await cache_service.invalidate_prefix("users")
@@ -109,6 +111,7 @@ async def update_my_profile(
     payload: ProfileUpdate,
     current_user: User = Depends(get_current_user),
     user_service: UserService = Depends(get_user_service),
+    cache_service: CacheService = Depends(get_cache_service),
 ):
     updated_profile = await user_service.update_profile(current_user.id, payload)
     await cache_service.invalidate_prefixes("user_profile", "auth_me", "users_me")
@@ -141,6 +144,7 @@ async def update_user(
     payload: UserUpdate,
     current_user: User = Depends(require_permission(PermissionEnum.USERS_WRITE)),
     user_service: UserService = Depends(get_user_service),
+    cache_service: CacheService = Depends(get_cache_service),
 ):
     updated_user = await user_service.update_user(user_id, payload, current_user)
     await cache_service.invalidate_prefixes(
@@ -158,6 +162,7 @@ async def delete_user(
     user_id: uuid.UUID,
     current_user: User = Depends(require_permission(PermissionEnum.USERS_WRITE)),
     user_service: UserService = Depends(get_user_service),
+    cache_service: CacheService = Depends(get_cache_service),
 ):
     await user_service.delete_user(user_id, current_user)
     await cache_service.invalidate_prefixes(

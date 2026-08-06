@@ -107,9 +107,6 @@ class CacheService:
         return total_deleted
 
 
-cache_service = CacheService()
-
-
 def cache_response(
     ttl_seconds: int = 300, key_prefix: Optional[str] = None
 ) -> Callable:

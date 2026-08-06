@@ -6,11 +6,12 @@ from fastapi import Depends, Query, Request, status
 
 from app.api.deps import (
     ProtectedAPIRouter,
+    get_cache_service,
     get_current_user,
     get_leave_service,
     require_permission,
 )
-from app.core.services.cache_service import cache_response, cache_service
+from app.core.services.cache_service import CacheService, cache_response
 from app.models.leave import LeaveStatus
 from app.models.role import PermissionEnum
 from app.models.user import User
@@ -74,6 +75,7 @@ async def apply_leave(
     payload: LeaveRequestCreate,
     current_user: User = Depends(require_permission(PermissionEnum.LEAVE_APPLY)),
     leave_service: LeaveService = Depends(get_leave_service),
+    cache_service: CacheService = Depends(get_cache_service),
 ):
     created_request = await leave_service.apply_leave(current_user.id, payload)
     await cache_service.invalidate_prefixes("leave_balance", "leave_requests")
@@ -129,6 +131,7 @@ async def update_leave_status(
     payload: LeaveStatusUpdatePayload,
     current_user: User = Depends(require_permission(PermissionEnum.LEAVE_APPROVE)),
     leave_service: LeaveService = Depends(get_leave_service),
+    cache_service: CacheService = Depends(get_cache_service),
 ):
     updated_request = await leave_service.update_leave_status(
         request_id=id, approver_id=current_user.id, payload=payload
@@ -174,6 +177,7 @@ async def grant_manual_allocation(
     payload: ManualAllocationGrantPayload,
     current_user: User = Depends(require_permission(PermissionEnum.LEAVE_MANAGE_TYPES)),
     leave_service: LeaveService = Depends(get_leave_service),
+    cache_service: CacheService = Depends(get_cache_service),
 ):
     granted = await leave_service.grant_manual_allocation(payload)
     await cache_service.invalidate_prefixes("leave_balance")
@@ -189,6 +193,7 @@ async def trigger_accruals_manually(
     target_date: Optional[date] = Query(None),
     current_user: User = Depends(require_permission(PermissionEnum.LEAVE_MANAGE_TYPES)),
     leave_service: LeaveService = Depends(get_leave_service),
+    cache_service: CacheService = Depends(get_cache_service),
 ):
     accrued_count = await leave_service.trigger_periodic_accruals(target_date)
     await cache_service.invalidate_prefixes("leave_balance")
@@ -208,6 +213,7 @@ async def cancel_leave(
     id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     leave_service: LeaveService = Depends(get_leave_service),
+    cache_service: CacheService = Depends(get_cache_service),
 ):
     await leave_service.cancel_leave(request_id=id, user_id=current_user.id)
     await cache_service.invalidate_prefixes("leave_balance", "leave_requests")
@@ -241,6 +247,7 @@ async def create_holiday(
     payload: HolidayCreatePayload,
     current_user: User = Depends(require_permission(PermissionEnum.LEAVE_MANAGE_TYPES)),
     leave_service: LeaveService = Depends(get_leave_service),
+    cache_service: CacheService = Depends(get_cache_service),
 ):
     created_holiday = await leave_service.create_holiday(payload)
     await cache_service.invalidate_prefix("company_holidays")

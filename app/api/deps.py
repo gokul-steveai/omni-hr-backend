@@ -1,12 +1,13 @@
 import uuid
 from enum import Enum
+from functools import lru_cache
 from typing import Callable
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.services.cache_service import cache_service
+from app.core.services.cache_service import CacheService
 from app.core.services.idempotency_service import (
     check_idempotency,
     idempotency_service,
@@ -27,7 +28,7 @@ from app.modules.users.service import UserService
 
 __all__ = [
     "get_db",
-    "cache_service",
+    "get_cache_service",
     "idempotency_service",
     "check_idempotency",
     "get_user_repository",
@@ -135,6 +136,11 @@ def get_audit_service(
     return AuditLogService(
         database_session=database_session, audit_repository=audit_repository
     )
+
+
+@lru_cache
+def get_cache_service() -> CacheService:
+    return CacheService()
 
 
 # -----------------------------------------------------------------------------
