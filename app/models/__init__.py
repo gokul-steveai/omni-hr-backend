@@ -1,7 +1,9 @@
-from app.models.audit import AuditLog
+from app.models.audit import AuditAction, AuditEntity, AuditLog, AuditModule
 from app.models.holiday import CompanyHoliday
 from app.models.leave import (
+    AccrualFrequency,
     HalfDayType,
+    LeaveAccrualPolicy,
     LeaveAllocation,
     LeaveApproval,
     LeaveRequest,
@@ -25,7 +27,9 @@ __all__ = [
     "Role",
     "Permission",
     "role_permissions",
+    "AccrualFrequency",
     "LeaveType",
+    "LeaveAccrualPolicy",
     "LeaveAllocation",
     "LeaveRequest",
     "LeaveApproval",
@@ -40,4 +44,7 @@ __all__ = [
     "PayRunStatus",
     "CompanyHoliday",
     "AuditLog",
+    "AuditModule",
+    "AuditEntity",
+    "AuditAction",
 ]

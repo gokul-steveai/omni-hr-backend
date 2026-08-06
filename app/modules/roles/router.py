@@ -17,13 +17,11 @@ from app.modules.roles.schemas import (
 from app.modules.roles.service import RoleService
 from app.schemas.common import MetaPayload, StandardResponse
 
-router = ProtectedAPIRouter(prefix="/roles", tags=["Roles & Permissions"])
-permissions_router = ProtectedAPIRouter(
-    prefix="/permissions", tags=["Roles & Permissions"]
-)
+roles_router = ProtectedAPIRouter()
+permissions_router = ProtectedAPIRouter()
 
 
-@router.get(
+@roles_router.get(
     "",
     response_model=StandardResponse[list[RoleRead]],
     dependencies=[Depends(require_permission(PermissionEnum.ROLES_READ))],
@@ -66,7 +64,7 @@ async def list_permissions(
     return StandardResponse.ok(data=perm_list, meta=meta)
 
 
-@router.get(
+@roles_router.get(
     "/{role_id}/permissions",
     response_model=StandardResponse[list[PermissionRead]],
     dependencies=[Depends(require_permission(PermissionEnum.ROLES_READ))],
@@ -99,7 +97,7 @@ async def create_permission(
     return PermissionRead.model_validate(created_permission)
 
 
-@router.post(
+@roles_router.post(
     "",
     response_model=RoleWithPermissionsRead,
     status_code=status.HTTP_201_CREATED,
@@ -115,7 +113,7 @@ async def create_role(
     return RoleWithPermissionsRead.model_validate(created_role)
 
 
-@router.get(
+@roles_router.get(
     "/{role_id}",
     response_model=RoleWithPermissionsRead,
     dependencies=[Depends(require_permission(PermissionEnum.ROLES_READ))],
@@ -131,7 +129,7 @@ async def get_role(
     return RoleWithPermissionsRead.model_validate(role_entity)
 
 
-@router.put(
+@roles_router.put(
     "/{role_id}",
     response_model=RoleWithPermissionsRead,
     dependencies=[Depends(require_permission(PermissionEnum.ROLES_WRITE))],
@@ -147,7 +145,7 @@ async def update_role(
     return RoleWithPermissionsRead.model_validate(updated_role)
 
 
-@router.delete(
+@roles_router.delete(
     "/{role_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     dependencies=[Depends(require_permission(PermissionEnum.ROLES_DELETE))],

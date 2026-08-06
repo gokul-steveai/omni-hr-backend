@@ -9,6 +9,10 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.redis import close_redis, init_redis
+from app.core.scheduler import (
+    start_background_scheduler,
+    stop_background_scheduler,
+)
 from app.db.session import Base, engine
 from app.schemas.common import StandardResponse
 
@@ -22,9 +26,13 @@ async def lifespan(app: FastAPI):
     # Initialize Redis connection pool
     await init_redis()
 
+    # Start background leave accrual scheduler
+    start_background_scheduler()
+
     yield
 
-    # Clean up Redis connection on shutdown
+    # Stop background scheduler and clean up Redis connection on shutdown
+    await stop_background_scheduler()
     await close_redis()
 
 

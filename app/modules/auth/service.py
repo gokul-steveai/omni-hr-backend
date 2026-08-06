@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException, status
@@ -6,7 +7,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.services.password_service import PasswordService
 from app.core.services.token_service import TokenService
+from app.models.audit import AuditAction, AuditEntity, AuditLog, AuditModule
 from app.models.user import RefreshToken, User
+from app.modules.audit.repository import AuditLogRepository
 from app.modules.auth.schemas import LoginRequest, TokenResponse
 from app.modules.users.repository import UserRepository
 
@@ -16,9 +19,11 @@ class AuthService:
         self,
         database_session: AsyncSession,
         user_repository: UserRepository,
+        audit_repository: AuditLogRepository,
     ):
         self._database_session = database_session
         self._user_repository = user_repository
+        self._audit_repository = audit_repository
 
     async def authenticate_user(self, payload: LoginRequest) -> TokenResponse:
         user_entity = await self._user_repository.get_by_email(payload.email)
@@ -42,7 +47,20 @@ class AuthService:
                 },
             )
 
-        return await self._issue_tokens(user_entity)
+        tokens = await self._issue_tokens(user_entity)
+
+        # Audit log for user login
+        login_audit = AuditLog(
+            user_id=user_entity.id,
+            module=AuditModule.AUTH.value,
+            action=AuditAction.USER_LOGIN.value,
+            entity=AuditEntity.USER.value,
+            entity_id=user_entity.id,
+            extra_metadata={"email": user_entity.email},
+        )
+        await self._audit_repository.create_log(login_audit)
+
+        return tokens
 
     async def refresh_tokens(self, refresh_token_string: str) -> TokenResponse:
         decoded_payload = TokenService.decode_token(
@@ -98,15 +116,38 @@ class AuthService:
                 },
             )
 
-        return await self._issue_tokens(user_entity)
+        tokens = await self._issue_tokens(user_entity)
+
+        # Audit log for token refresh
+        refresh_audit = AuditLog(
+            user_id=user_entity.id,
+            module=AuditModule.AUTH.value,
+            action=AuditAction.TOKEN_REFRESH.value,
+            entity=AuditEntity.USER.value,
+            entity_id=user_entity.id,
+        )
+        await self._audit_repository.create_log(refresh_audit)
+
+        return tokens
 
     async def logout(self, user_id_string: str, refresh_token_string: str) -> None:
         hashed_refresh_token = TokenService.hash_token(refresh_token_string)
         persisted_token = await self._user_repository.get_refresh_token(
             hashed_refresh_token
         )
+        user_uuid = uuid.UUID(user_id_string)
         if persisted_token and str(persisted_token.user_id) == str(user_id_string):
             persisted_token.is_revoked = True
+
+        # Audit log for logout
+        logout_audit = AuditLog(
+            user_id=user_uuid,
+            module=AuditModule.AUTH.value,
+            action=AuditAction.USER_LOGOUT.value,
+            entity=AuditEntity.USER.value,
+            entity_id=user_uuid,
+        )
+        await self._audit_repository.create_log(logout_audit)
 
     async def _issue_tokens(self, user_entity: User) -> TokenResponse:
         role_name = user_entity.role.name if user_entity.role else "employee"

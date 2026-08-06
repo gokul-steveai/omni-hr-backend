@@ -17,6 +17,7 @@ from app.modules.users.schemas import (
     ProfileUpdate,
     UserCreate,
     UserResponse,
+    UserUpdate,
 )
 from app.modules.users.service import UserService
 from app.schemas.common import MetaPayload, StandardResponse
@@ -70,6 +71,21 @@ async def create_user(
 
 
 @router.get(
+    "/me",
+    response_model=StandardResponse[UserResponse],
+    response_model_exclude_none=True,
+)
+@cache_response(ttl_seconds=120, key_prefix="users_me")
+async def get_me(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    user_service: UserService = Depends(get_user_service),
+):
+    user = await user_service.get_user_by_id(current_user.id)
+    return StandardResponse.ok(data=user)
+
+
+@router.get(
     "/me/profile",
     response_model=StandardResponse[ProfileResponse],
     response_model_exclude_none=True,
@@ -95,6 +111,56 @@ async def update_my_profile(
     user_service: UserService = Depends(get_user_service),
 ):
     updated_profile = await user_service.update_profile(current_user.id, payload)
-    await cache_service.invalidate_prefix("user_profile")
-    await cache_service.invalidate_prefix("auth_me")
+    await cache_service.invalidate_prefixes("user_profile", "auth_me", "users_me")
     return StandardResponse.ok(data=updated_profile)
+
+
+@router.get(
+    "/{user_id}",
+    response_model=StandardResponse[UserResponse],
+    response_model_exclude_none=True,
+)
+@cache_response(ttl_seconds=120, key_prefix="user_detail")
+async def get_user_by_id(
+    request: Request,
+    user_id: uuid.UUID,
+    current_user: User = Depends(require_permission(PermissionEnum.USERS_READ)),
+    user_service: UserService = Depends(get_user_service),
+):
+    user = await user_service.get_user_by_id(user_id)
+    return StandardResponse.ok(data=user)
+
+
+@router.put(
+    "/{user_id}",
+    response_model=StandardResponse[UserResponse],
+    response_model_exclude_none=True,
+)
+async def update_user(
+    user_id: uuid.UUID,
+    payload: UserUpdate,
+    current_user: User = Depends(require_permission(PermissionEnum.USERS_WRITE)),
+    user_service: UserService = Depends(get_user_service),
+):
+    updated_user = await user_service.update_user(user_id, payload, current_user)
+    await cache_service.invalidate_prefixes(
+        "users", "user_detail", "auth_me", "users_me"
+    )
+    return StandardResponse.ok(data=updated_user)
+
+
+@router.delete(
+    "/{user_id}",
+    response_model=StandardResponse[dict],
+    response_model_exclude_none=True,
+)
+async def delete_user(
+    user_id: uuid.UUID,
+    current_user: User = Depends(require_permission(PermissionEnum.USERS_WRITE)),
+    user_service: UserService = Depends(get_user_service),
+):
+    await user_service.delete_user(user_id, current_user)
+    await cache_service.invalidate_prefixes(
+        "users", "user_detail", "auth_me", "users_me"
+    )
+    return StandardResponse.ok(data={"message": "User account successfully deleted."})
