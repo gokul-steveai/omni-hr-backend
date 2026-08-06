@@ -49,7 +49,7 @@ class BaseRepository(Generic[ModelType]):
         self, entity_instance: ModelType, update_data: dict[str, Any]
     ) -> ModelType:
         for field_name, field_value in update_data.items():
-            if hasattr(entity_instance, field_name) and field_value is not None:
+            if hasattr(entity_instance, field_name):
                 setattr(entity_instance, field_name, field_value)
         await self.database_session.flush()
         return entity_instance

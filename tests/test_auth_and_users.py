@@ -182,3 +182,90 @@ async def test_self_service_profile_update():
         assert body["success"] is True
         assert body["data"]["phone_number"] == "+1-999-888-7777"
         assert body["data"]["address"] == "Scranton Business Park"
+
+
+@pytest.mark.asyncio
+async def test_get_users_me_endpoint():
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        login_res = await ac.post(
+            "/api/v1/auth/login",
+            json={"email": "emp_test@omnihr.com", "password": "EmpPass123!"},
+        )
+        token = login_res.json()["data"]["access_token"]
+
+        res = await ac.get(
+            "/api/v1/users/me", headers={"Authorization": f"Bearer {token}"}
+        )
+        assert res.status_code == 200
+        body = res.json()
+        assert body["success"] is True
+        assert body["data"]["email"] == "emp_test@omnihr.com"
+
+
+@pytest.mark.asyncio
+async def test_admin_get_update_delete_user():
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        admin_login = await ac.post(
+            "/api/v1/auth/login",
+            json={"email": "admin_test@omnihr.com", "password": "TestPass123!"},
+        )
+        admin_token = admin_login.json()["data"]["access_token"]
+        headers = {"Authorization": f"Bearer {admin_token}"}
+
+        # 1. Fetch user list to get target employee ID
+        list_res = await ac.get("/api/v1/users?limit=100", headers=headers)
+        assert list_res.status_code == 200
+        emp_user = next(
+            (u for u in list_res.json()["data"] if u["email"] == "emp_test@omnihr.com"),
+            None,
+        )
+        assert emp_user is not None, (
+            "Target employee user 'emp_test@omnihr.com' was not found in user list."
+        )
+        target_id = emp_user["id"]
+
+        # 2. GET /users/{id}
+        get_res = await ac.get(f"/api/v1/users/{target_id}", headers=headers)
+        assert get_res.status_code == 200
+        assert get_res.json()["data"]["email"] == "emp_test@omnihr.com"
+
+        # 3. PUT /users/{id}
+        update_res = await ac.put(
+            f"/api/v1/users/{target_id}",
+            headers=headers,
+            json={"first_name": "UpdatedEmp", "last_name": "NewLast"},
+        )
+        assert update_res.status_code == 200
+        assert update_res.json()["data"]["first_name"] == "UpdatedEmp"
+
+        # 4. Attempt self deletion (should fail 400)
+        admin_user = next(
+            (
+                u
+                for u in list_res.json()["data"]
+                if u["email"] == "admin_test@omnihr.com"
+            ),
+            None,
+        )
+        assert admin_user is not None, (
+            "Admin user 'admin_test@omnihr.com' was not found in user list."
+        )
+        self_del_res = await ac.delete(
+            f"/api/v1/users/{admin_user['id']}", headers=headers
+        )
+
+        assert self_del_res.status_code == 400
+        assert self_del_res.json()["error"]["code"] == "CANNOT_DELETE_SELF"
+
+        # 5. DELETE /users/{id}
+        del_res = await ac.delete(f"/api/v1/users/{target_id}", headers=headers)
+        assert del_res.status_code == 200
+        assert del_res.json()["success"] is True
+
+        # 6. Verify user no longer exists
+        get_deleted = await ac.get(f"/api/v1/users/{target_id}", headers=headers)
+        assert get_deleted.status_code == 404

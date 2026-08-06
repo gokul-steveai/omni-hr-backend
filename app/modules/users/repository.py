@@ -48,11 +48,15 @@ class UserRepository(BaseRepository[User]):
         role_id: Optional[uuid.UUID] = None,
         role_name: Optional[str] = None,
     ) -> tuple[Sequence[User], int]:
-        query = select(User).options(
-            selectinload(User.department),
-            selectinload(User.designation),
-            selectinload(User.profile),
-            selectinload(User.role),
+        query = (
+            select(User)
+            .where(User.is_active.is_(True))
+            .options(
+                selectinload(User.department),
+                selectinload(User.designation),
+                selectinload(User.profile),
+                selectinload(User.role),
+            )
         )
 
         if department_id:

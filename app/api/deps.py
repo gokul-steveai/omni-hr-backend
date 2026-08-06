@@ -15,7 +15,11 @@ from app.core.services.token_service import TokenService
 from app.db.session import get_db
 from app.models.role import PermissionEnum
 from app.models.user import User, UserRole
+from app.modules.audit.repository import AuditLogRepository
+from app.modules.audit.service import AuditLogService
 from app.modules.auth.service import AuthService
+from app.modules.leaves.repository import LeaveRepository
+from app.modules.leaves.service import LeaveService
 from app.modules.roles.repository import RoleRepository
 from app.modules.roles.service import RoleService
 from app.modules.users.repository import UserRepository
@@ -28,14 +32,19 @@ __all__ = [
     "check_idempotency",
     "get_user_repository",
     "get_role_repository",
+    "get_leave_repository",
+    "get_audit_repository",
     "get_auth_service",
     "get_user_service",
     "get_role_service",
+    "get_leave_service",
+    "get_audit_service",
     "get_current_user",
     "require_roles",
     "require_permission",
     "ProtectedAPIRouter",
 ]
+
 
 security_scheme = HTTPBearer()
 
@@ -57,12 +66,21 @@ def get_role_repository(
     return RoleRepository(database_session)
 
 
+def get_audit_repository(
+    database_session: AsyncSession = Depends(get_db),
+) -> AuditLogRepository:
+    return AuditLogRepository(database_session)
+
+
 def get_auth_service(
     database_session: AsyncSession = Depends(get_db),
     user_repository: UserRepository = Depends(get_user_repository),
+    audit_repository: AuditLogRepository = Depends(get_audit_repository),
 ) -> AuthService:
     return AuthService(
-        database_session=database_session, user_repository=user_repository
+        database_session=database_session,
+        user_repository=user_repository,
+        audit_repository=audit_repository,
     )
 
 
@@ -70,20 +88,52 @@ def get_user_service(
     database_session: AsyncSession = Depends(get_db),
     user_repository: UserRepository = Depends(get_user_repository),
     role_repository: RoleRepository = Depends(get_role_repository),
+    audit_repository: AuditLogRepository = Depends(get_audit_repository),
 ) -> UserService:
     return UserService(
         database_session=database_session,
         user_repository=user_repository,
         role_repository=role_repository,
+        audit_repository=audit_repository,
     )
 
 
 def get_role_service(
     database_session: AsyncSession = Depends(get_db),
     role_repository: RoleRepository = Depends(get_role_repository),
+    audit_repository: AuditLogRepository = Depends(get_audit_repository),
 ) -> RoleService:
     return RoleService(
-        database_session=database_session, role_repository=role_repository
+        database_session=database_session,
+        role_repository=role_repository,
+        audit_repository=audit_repository,
+    )
+
+
+def get_leave_repository(
+    database_session: AsyncSession = Depends(get_db),
+) -> LeaveRepository:
+    return LeaveRepository(database_session)
+
+
+def get_leave_service(
+    database_session: AsyncSession = Depends(get_db),
+    leave_repository: LeaveRepository = Depends(get_leave_repository),
+    audit_repository: AuditLogRepository = Depends(get_audit_repository),
+) -> LeaveService:
+    return LeaveService(
+        database_session=database_session,
+        leave_repository=leave_repository,
+        audit_repository=audit_repository,
+    )
+
+
+def get_audit_service(
+    database_session: AsyncSession = Depends(get_db),
+    audit_repository: AuditLogRepository = Depends(get_audit_repository),
+) -> AuditLogService:
+    return AuditLogService(
+        database_session=database_session, audit_repository=audit_repository
     )
 
 

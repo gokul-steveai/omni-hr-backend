@@ -99,6 +99,13 @@ class CacheService:
         """Invalidate all route caches starting with prefix (e.g. 'roles', 'users')."""
         return await self.delete_pattern(f"route_cache:*{prefix}*")
 
+    async def invalidate_prefixes(self, *prefixes: str) -> int:
+        """Invalidate multiple route cache prefixes at once."""
+        total_deleted = 0
+        for prefix in prefixes:
+            total_deleted += await self.invalidate_prefix(prefix)
+        return total_deleted
+
 
 cache_service = CacheService()
 

@@ -290,6 +290,37 @@ async def seed_database():
         if emp and lead and not emp.manager_id:
             emp.manager_id = lead.id
 
+        print("Seeding Default Leave Accrual Policies...")
+        from app.models.leave import AccrualFrequency, LeaveAccrualPolicy
+
+        # Seed global fallback policies for Casual (1.5 days/mo) and Sick (1.0 day/mo)
+        for lt_enum, rate, max_q in [
+            (LeaveTypeEnum.CASUAL, 1.5, 18.0),
+            (LeaveTypeEnum.SICK, 1.0, 12.0),
+            (LeaveTypeEnum.EARNED, 1.25, 30.0),
+        ]:
+            res = await session.execute(
+                select(LeaveType).where(LeaveType.name == lt_enum)
+            )
+            lt = res.scalar_one_or_none()
+            if lt:
+                pol_res = await session.execute(
+                    select(LeaveAccrualPolicy).where(
+                        LeaveAccrualPolicy.leave_type_id == lt.id,
+                        LeaveAccrualPolicy.designation_id.is_(None),
+                    )
+                )
+                if not pol_res.scalar_one_or_none():
+                    policy = LeaveAccrualPolicy(
+                        leave_type_id=lt.id,
+                        designation_id=None,
+                        frequency=AccrualFrequency.MONTHLY,
+                        accrual_rate=rate,
+                        max_quota=max_q,
+                        is_active=True,
+                    )
+                    session.add(policy)
+
         await session.commit()
         print("Database Seeding Completed Successfully!")
 
