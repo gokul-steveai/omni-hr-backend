@@ -270,6 +270,15 @@ class LeaveService:
                 },
             )
 
+        if payload.status not in [LeaveStatus.APPROVED, LeaveStatus.REJECTED]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "code": "INVALID_STATUS_UPDATE",
+                    "message": "Leave request status can only be updated to APPROVED or REJECTED.",
+                },
+            )
+
         if leave_request.status != LeaveStatus.PENDING:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -558,8 +567,9 @@ class LeaveService:
                     continue
 
                 alloc = await self.leave_repo.get_allocation_for_type(
-                    user.id, policy.leave_type_id, today.year
+                    user.id, policy.leave_type_id, today.year, for_update=True
                 )
+
                 if not alloc:
                     alloc = LeaveAllocation(
                         user_id=user.id,

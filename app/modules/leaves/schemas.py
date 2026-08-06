@@ -121,6 +121,7 @@ class HolidayRead(BaseModel):
 class AuditLogRead(BaseModel):
     id: uuid.UUID
     user_id: Optional[uuid.UUID] = None
+    module: Optional[str] = None
     action: str
     entity: str
     entity_id: Optional[uuid.UUID] = None

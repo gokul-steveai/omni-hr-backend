@@ -50,9 +50,13 @@ class LeaveRepository(BaseRepository[LeaveRequest]):
         return query_result.scalars().all()
 
     async def get_allocation_for_type(
-        self, user_id: uuid.UUID, leave_type_id: uuid.UUID, year: int
+        self,
+        user_id: uuid.UUID,
+        leave_type_id: uuid.UUID,
+        year: int,
+        for_update: bool = False,
     ) -> Optional[LeaveAllocation]:
-        query_result = await self.database_session.execute(
+        query = (
             select(LeaveAllocation)
             .options(selectinload(LeaveAllocation.leave_type))
             .where(
@@ -61,6 +65,9 @@ class LeaveRepository(BaseRepository[LeaveRequest]):
                 LeaveAllocation.year == year,
             )
         )
+        if for_update:
+            query = query.with_for_update()
+        query_result = await self.database_session.execute(query)
         return query_result.scalar_one_or_none()
 
     async def save_allocation(self, allocation: LeaveAllocation) -> LeaveAllocation:

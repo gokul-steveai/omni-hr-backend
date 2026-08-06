@@ -21,7 +21,11 @@ class Settings(BaseSettings):
     # Redis Cache & PubSub
     REDIS_URL: str = "redis://localhost:6379/0"
 
+    # Scheduler Gate
+    RUN_SCHEDULER: bool = True
+
     # CORS
+
     BACKEND_CORS_ORIGINS: List[str] = [
         "http://localhost:3000",
         "http://127.0.0.1:3000",

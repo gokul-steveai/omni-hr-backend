@@ -26,13 +26,15 @@ async def lifespan(app: FastAPI):
     # Initialize Redis connection pool
     await init_redis()
 
-    # Start background leave accrual scheduler
-    start_background_scheduler()
+    # Start background leave accrual scheduler if enabled
+    if settings.RUN_SCHEDULER:
+        start_background_scheduler()
 
     yield
 
     # Stop background scheduler and clean up Redis connection on shutdown
-    await stop_background_scheduler()
+    if settings.RUN_SCHEDULER:
+        await stop_background_scheduler()
     await close_redis()
 
 
